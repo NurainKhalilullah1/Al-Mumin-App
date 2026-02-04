@@ -223,17 +223,25 @@ export const updateApplicantStatus = (id, newStatus) => {
 // --- NOTICEBOARD MANAGEMENT (NEW) ---
 // --- NOTICEBOARD (ASYNC) ---
 export const getNotices = async () => {
-  const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
-  if (error) return [];
+  try {
+    const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error("Error fetching notices:", error);
+      return [];
+    }
 
-  // Map snake_case to camelCase
-  return data.map(n => ({
-    id: n.id,
-    message: n.message,
-    audience: n.audience,
-    showOnTicker: n.show_on_ticker,
-    active: n.active
-  }));
+    // Map snake_case to camelCase
+    return data.map(n => ({
+      id: n.id,
+      message: n.message,
+      audience: n.audience,
+      showOnTicker: n.show_on_ticker,
+      active: n.active
+    }));
+  } catch (err) {
+    console.error("Unexpected error fetching notices:", err);
+    return [];
+  }
 };
 
 export const saveNotice = async (noticeData) => {
@@ -256,8 +264,17 @@ export const deleteNotice = async (id) => {
 };
 
 export const getTickerNotices = async () => {
-  const { data } = await supabase.from('notices').select('*').eq('show_on_ticker', true).eq('active', true);
-  return data ? data.map(n => ({ id: n.id, message: n.message })) : [];
+  try {
+    const { data, error } = await supabase.from('notices').select('*').eq('show_on_ticker', true).eq('active', true);
+    if (error) {
+      console.warn("Error fetching ticker notices:", error);
+      return [];
+    }
+    return data ? data.map(n => ({ id: n.id, message: n.message })) : [];
+  } catch (err) {
+    console.warn("Unexpected error fetching notices:", err);
+    return [];
+  }
 };
 
 // --- EXISTING FUNCTIONS (Assignments, Attendance, Staff...) ---
