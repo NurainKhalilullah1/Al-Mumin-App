@@ -91,6 +91,7 @@ function App() {
               <Route path="admin-payments" element={<AdminPayments />} />
               <Route path="student-payments" element={<StudentPayments />} />
             </Route>
+          </Route>
 
         </Routes>
       </ToastProvider>
