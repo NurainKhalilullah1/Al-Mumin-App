@@ -2,8 +2,8 @@
 
 // --- GLOBAL HELPERS ---
 // --- GLOBAL HELPERS (DEPRECATED) ---
-// const getDB = (key) => JSON.parse(localStorage.getItem(key)) || [];
-// const saveDB = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+const getDB = (key) => JSON.parse(localStorage.getItem(key)) || [];
+const saveDB = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
 // src/utils/db.js
 import { supabase } from '../supabaseClient';
@@ -275,6 +275,26 @@ export const getTickerNotices = async () => {
     console.warn("Unexpected error fetching notices:", err);
     return [];
   }
+};
+
+// --- ATTENDANCE MANAGEMENT (SYNC / MOCK) ---
+export const getAttendance = (classLevel, date) => {
+  const records = getDB('schoolAttendance');
+  const found = records.find(r => r.id === `${classLevel}_${date}`);
+  return found ? found.records : {};
+};
+
+export const saveAttendance = (classLevel, date, data) => {
+  const records = getDB('schoolAttendance');
+  const id = `${classLevel}_${date}`;
+  const existingIndex = records.findIndex(r => r.id === id);
+
+  if (existingIndex >= 0) {
+    records[existingIndex].records = data;
+  } else {
+    records.push({ id, classLevel, date, records: data });
+  }
+  saveDB('schoolAttendance', records);
 };
 
 // --- EXISTING FUNCTIONS (Assignments, Attendance, Staff...) ---
