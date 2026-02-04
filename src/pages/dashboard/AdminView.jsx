@@ -1,0 +1,114 @@
+import React from 'react';
+import {
+  Users, CreditCard, TrendingUp, UserPlus,
+  FileText, CheckCircle, Upload, ArrowRight
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+const AdminView = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div>
+      {/* --- WELCOME HEADER --- */}
+      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Principal's Cockpit</h1>
+          <p className="text-gray-500 mt-1">Good Morning, Mr. Ibrahim. Here is the school's pulse today.</p>
+        </div>
+      </div>
+
+      <div className="animate-in fade-in duration-500">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <StatCard title="Total Students" value="1,240" icon={<Users />} color="bg-blue-600" />
+          <StatCard title="Fees Collected" value="₦45.2M" sub="85% Target" icon={<CreditCard />} color="bg-green-600" />
+          <StatCard title="Pending Admissions" value="12" sub="Action Needed" icon={<UserPlus />} color="bg-orange-500" />
+          <StatCard title="Staff Present" value="42/45" icon={<CheckCircle />} color="bg-purple-600" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Recent Activity Feed */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-gray-800">Live Activity Feed</h3>
+              <button className="text-sm text-schoolGreen font-bold hover:underline">View All</button>
+            </div>
+            <div className="space-y-6">
+              <ActivityItem
+                icon={<FileText />}
+                title="Lesson Note Submitted"
+                desc="Mrs. Adebayo submitted JSS2 English Lesson Note for approval."
+                time="10 mins ago"
+              />
+              <ActivityItem
+                icon={<CreditCard />}
+                title="Fee Payment Verified"
+                desc="Bursar confirmed payment for 15 students via Bank Transfer."
+                time="32 mins ago"
+              />
+              <ActivityItem
+                icon={<Upload />}
+                title="Result Uploaded"
+                desc="Mr. Okon uploaded SS1 Physics CA Scores."
+                time="1 hour ago"
+              />
+            </div>
+          </div>
+
+          {/* Right: Quick Actions */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+            <h3 className="font-bold text-gray-800 mb-6">Quick Actions</h3>
+            <div className="space-y-3">
+              <ActionBtn label="New Admission" onClick={() => navigate('/portal/admissions')} />
+              <ActionBtn label="Post New Notice" onClick={() => navigate('/portal/notices')} />
+              <ActionBtn label="Manage Results" onClick={() => navigate('/portal/results')} />
+              <ActionBtn label="View Students" onClick={() => navigate('/portal/students')} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+// --- HELPER COMPONENTS ---
+
+const StatCard = ({ title, value, sub, icon, color }) => (
+  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center hover:-translate-y-1 transition-transform">
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white mr-4 shadow-lg ${color}`}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">{title}</p>
+      <h3 className="text-2xl font-bold text-gray-800 leading-none mt-1">{value}</h3>
+      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+    </div>
+  </div>
+);
+
+const ActivityItem = ({ icon, title, desc, time }) => (
+  <div className="flex items-start">
+    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 mr-4 shrink-0 mt-1">
+      {React.cloneElement(icon, { size: 14 })}
+    </div>
+    <div>
+      <p className="text-sm font-bold text-gray-800">{title}</p>
+      <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+    </div>
+    <span className="ml-auto text-[10px] text-gray-400 font-medium">{time}</span>
+  </div>
+);
+
+const ActionBtn = ({ label, count, onClick }) => (
+  <button onClick={onClick} className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 text-gray-700 rounded-xl font-bold text-sm border border-gray-200 hover:bg-gray-100 transition-colors group">
+    {label}
+    <div className="flex items-center">
+      {count && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full mr-2">{count}</span>}
+      <ArrowRight size={16} className="text-gray-300 group-hover:text-schoolGreen transition-colors" />
+    </div>
+  </button>
+);
+
+export default AdminView;

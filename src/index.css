@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --school-green: #0f3928; /* Very Dark British Green */
+  --school-gold: #c5a059;   /* Champagne Gold */
+  --off-white: #f9f9f7;     /* Alabaster */
+}
+
+body {
+  font-family: 'Mulish', sans-serif;
+  background-color: var(--off-white);
+  color: #1a1a1a;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* --- RICH SCROLLBAR --- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--school-gold);
+  border-radius: 4px;
+}
+
+/* --- CUSTOM ANIMATIONS --- */
+.parallax-bg {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+.text-gold { color: var(--school-gold); }
+.bg-green { background-color: var(--school-green); }
+
+/* Smooth Reveal for Text */
+.reveal-text {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 1s ease-out;
+}
+/* ... existing code ... */
+
+/* ADD THIS AT THE BOTTOM FOR THE NEWS TICKER */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+}
+
+/* Pause animation when user hovers over it to read */
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
