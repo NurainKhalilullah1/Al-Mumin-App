@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, CheckCircle, AlertTriangle, ArrowLeft, Download, FileText } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
-import { getClasses, getStudentsByClass, getSubjects } from '../../utils/db';
+import { getClasses, getClassResults, getSubjects, approveClassResults } from '../../utils/db';
 
 const AdminResults = () => {
     const notify = useToast();
@@ -16,7 +16,11 @@ const AdminResults = () => {
     const [selectedTerm, setSelectedTerm] = useState('First Term');
 
     useEffect(() => {
-        setClasses(getClasses());
+        const fetchClasses = async () => {
+            const data = await getClasses();
+            setClasses(data);
+        };
+        fetchClasses();
     }, []);
 
     // Effect to refresh results when Class or Term changes
@@ -25,7 +29,7 @@ const AdminResults = () => {
         generateResults();
     }, [selectedClass, selectedTerm]);
 
-    const generateResults = () => {
+    const generateResults = async () => {
         if (!selectedClass) return;
 
         // 1. Determine Class Level (Junior vs Senior)
@@ -33,33 +37,38 @@ const AdminResults = () => {
         const levelType = isSenior ? 'Senior' : 'Junior';
 
         // 2. Fetch & Filter Subjects
-        const allSubjects = getSubjects();
+        const allSubjects = await getSubjects();
         const filteredSubjects = allSubjects.filter(s => s.type === levelType);
         setClassSubjects(filteredSubjects);
 
-        // 3. Fetch Students & Generate Mock Scores for these subjects
-        const students = getStudentsByClass(selectedClass.name);
+        // 3. Fetch Real Results from DB
+        const studentsWithResults = await getClassResults(selectedClass.name, selectedTerm);
 
-        const mockRows = students.map(s => {
+        const realRows = studentsWithResults.map(s => {
             const studentRow = {
                 id: s.id,
                 name: s.name,
                 scores: {}
             };
 
-            let totalScore = 0;
+            let totalWeightedScore = 0;
+            let subjectsCount = 0;
 
             filteredSubjects.forEach(sub => {
-                // Generate random score between 40 and 100
-                // Slight randomization based on term to show difference
-                const baseRandom = selectedTerm === 'First Term' ? 0.6 : selectedTerm === 'Second Term' ? 0.4 : 0.8;
-                const score = Math.floor(Math.random() * 60) + 40;
-                studentRow.scores[sub.name] = score; // Key by subject name
-                totalScore += score;
+                // Find result for this subject
+                const res = s.results.find(r => r.subject === sub.name);
+                if (res) {
+                    studentRow.scores[sub.name] = res.total;
+                    totalWeightedScore += res.total;
+                    subjectsCount++;
+                } else {
+                    studentRow.scores[sub.name] = '-';
+                }
             });
 
-            // Calculate Average
-            const avg = filteredSubjects.length > 0 ? totalScore / filteredSubjects.length : 0;
+            // Calculate Average based on ALL subjects in class (or only attempted?)
+            // Usually Broad Sheet averages over all subjects offered.
+            const avg = filteredSubjects.length > 0 ? totalWeightedScore / filteredSubjects.length : 0;
 
             return {
                 ...studentRow,
@@ -68,9 +77,9 @@ const AdminResults = () => {
         });
 
         // 4. Sort by Average (Position)
-        mockRows.sort((a, b) => b.avg - a.avg);
+        realRows.sort((a, b) => b.avg - a.avg);
 
-        setClassResults(mockRows);
+        setClassResults(realRows);
     };
 
     const handleClassClick = (cls) => {
@@ -140,7 +149,7 @@ const AdminResults = () => {
                                     <span className="text-xs font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-500">{cls.level || 'General'}</span>
                                 </div>
                                 <h3 className="text-2xl font-bold text-gray-800 mb-1">{cls.name}</h3>
-                                <p className="text-sm text-gray-400 font-bold">{cls.formTeacher || 'No Form Teacher'}</p>
+                                <p className="text-sm text-gray-400 font-bold">{cls.formTeacher || 'No Class Teacher'}</p>
                             </div>
                         ))}
                     </div>
@@ -174,11 +183,22 @@ const AdminResults = () => {
                                 <span className="text-gray-400">2025/2026 Session</span>
                             </div>
                         </div>
-                        <button
                             onClick={handleExport}
                             className="bg-schoolGreen text-white px-6 py-2.5 rounded-xl font-bold text-sm tracking-wide shadow hover:bg-schoolGold transition flex items-center"
                         >
                             <Download size={16} className="mr-2" /> Export {selectedTerm} (CSV)
+                        </button>
+                        <button
+                            onClick={async () => {
+                                if(confirm('Are you sure you want to approve all results for this class?')) {
+                                    const res = await approveClassResults(selectedClass.name, selectedTerm);
+                                    if(res.success) notify.success("Results approved successfully!");
+                                    else notify.error("Failed to approve results.");
+                                }
+                            }}
+                            className="ml-4 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm tracking-wide shadow hover:bg-blue-500 transition flex items-center"
+                        >
+                            <CheckCircle size={16} className="mr-2" /> Approve Results
                         </button>
                     </div>
 
@@ -225,9 +245,10 @@ const AdminResults = () => {
                         </table>
                     </div>
                 </div>
-            )}
+    )
+}
 
-        </div>
+        </div >
     );
 };
 

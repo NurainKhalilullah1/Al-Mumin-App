@@ -23,8 +23,13 @@ const LessonNotes = () => {
     loadNotes();
   }, []);
 
-  const loadNotes = () => {
-    setNotes(getLessonNotes().reverse()); // Show newest first
+  const loadNotes = async () => {
+    try {
+      const data = await getLessonNotes();
+      setNotes((data || []).reverse()); // Show newest first
+    } catch (error) {
+      console.error("Error loading notes:", error);
+    }
   };
 
   // --- ACTIONS ---

@@ -6,7 +6,15 @@ const StaffClasses = () => {
     const [classes, setClasses] = useState([]);
 
     useEffect(() => {
-        setClasses(getClasses());
+        const fetchData = async () => {
+            try {
+                const data = await getClasses();
+                setClasses(data || []);
+            } catch (error) {
+                console.error("Failed to load classes:", error);
+            }
+        };
+        fetchData();
     }, []);
 
     return (

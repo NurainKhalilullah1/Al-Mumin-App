@@ -4,7 +4,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useToast } from './ToastProvider';
 
-const ProtectedRoute = () => {
+const ProtectedRoute = (props) => {
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const notify = useToast();
@@ -35,7 +35,18 @@ const ProtectedRoute = () => {
     }
 
     if (!session) {
-        // notify.error("Please login to access the dashboard."); // Optional: Can be annoying on auto-redirect
+        return <Navigate to="/login" replace />;
+    }
+
+    // Role Check
+    const userRole = localStorage.getItem('userRole');
+    const { allowedRoles } = props;
+
+    if (allowedRoles && !allowedRoles.includes(userRole)) {
+        // Redirect to their appropriate dashboard
+        if (userRole === 'student') return <Navigate to="/portal/dashboard" replace />; // Students see Student View at /dashboard
+        if (userRole === 'teacher' || userRole === 'staff') return <Navigate to="/portal/dashboard" replace />;
+        if (userRole === 'admin') return <Navigate to="/portal/dashboard" replace />;
         return <Navigate to="/login" replace />;
     }
 

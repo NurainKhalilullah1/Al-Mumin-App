@@ -4,15 +4,29 @@ import {
   Users, BookOpen, FileText, CheckSquare,
   Plus, Upload, Clock, Calendar, Bell, ChevronRight, GraduationCap
 } from 'lucide-react';
-import { getNotices } from '../../utils/db';
+import { getNotices, getNotifications } from '../../utils/db'; // Added getNotifications
 
 const TeacherView = () => {
   const navigate = useNavigate();
   const [latestNotices, setLatestNotices] = React.useState([]);
+  const [notifications, setNotifications] = React.useState([]);
 
   React.useEffect(() => {
-    const all = getNotices().filter(n => n.active && (n.audience === 'Staff' || n.audience === 'All' || n.audience === 'Public'));
-    setLatestNotices(all.slice(-3).reverse()); // Top 3 recent
+    const fetchData = async () => {
+      // 1. Notices
+      const notices = await getNotices();
+      const all = notices.filter(n => n.active && (n.audience === 'Staff' || n.audience === 'All' || n.audience === 'Public'));
+      setLatestNotices(all.slice(-3).reverse());
+
+      // 2. Notifications (Personal)
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const notifs = await getNotifications(user.id);
+        setNotifications(notifs.slice(0, 5)); // Show recent 5
+      }
+    };
+    fetchData();
   }, []);
 
   // Mock Data
@@ -177,14 +191,14 @@ const TeacherView = () => {
                   </div>
                 </div>
               ))}
-              {recentActivities.map((act, idx) => (
+              {notifications.map((notif, idx) => (
                 <div key={idx} className="flex gap-4 relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg text-white ${act.bg}`}>
-                    {act.icon}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg text-white bg-blue-500 shadow-blue-200`}>
+                    <CheckSquare size={14} />
                   </div>
                   <div className="pt-1">
-                    <p className="text-sm text-gray-700 font-bold leading-snug mb-1">{act.text}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{act.time}</p>
+                    <p className="text-sm text-gray-700 font-bold leading-snug mb-1">{notif.message}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{new Date(notif.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               ))}

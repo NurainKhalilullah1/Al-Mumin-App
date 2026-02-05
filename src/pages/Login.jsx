@@ -17,24 +17,66 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (role === 'admin') {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+    try {
+      if (role === 'admin') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
 
-      if (error) {
-        notify.error("Invalid Credentials: " + error.message);
-        setLoading(false);
-      } else {
+        if (error) throw error;
+
         notify.success("Welcome back, Admin!");
+        localStorage.setItem('userRole', 'admin'); // <--- Fix: Set Role
         navigate('/portal/dashboard');
       }
-    } else {
-      // Mock Login for Student/Teacher for now
-      localStorage.setItem('userRole', role);
-      notify.success(`Logged in as ${role} (Mock)`);
-      navigate('/portal/dashboard');
+      else if (role === 'student') {
+        // Authenticate against 'students' table
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('admission_number', email.trim()) // Using email input field for Admission Number
+          .eq('password', password.trim())
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Login Error:", error);
+          throw error;
+        }
+        if (!data) throw new Error("Invalid Student ID or Password");
+
+        localStorage.setItem('userRole', 'student');
+        localStorage.setItem('currentUser', JSON.stringify(data));
+        notify.success(`Welcome, ${data.name}!`);
+        navigate('/portal/dashboard');
+      }
+      else if (role === 'teacher' || role === 'staff') {
+        // 'teacher' in UI usually maps to 'staff' in DB
+        const { data, error } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('email', email.trim()) // Trim Logic
+          .eq('password', password.trim()) // Trim Logic
+          .limit(1) // Handle duplicates
+          .maybeSingle(); // Prevent 406/JSON error
+
+        if (error) {
+          console.error("Login Error:", error);
+          throw new Error("Login Error: " + error.message);
+        }
+
+        if (!data) throw new Error("Invalid Staff Email or Password");
+
+        localStorage.setItem('userRole', 'teacher');
+        localStorage.setItem('currentUser', JSON.stringify(data));
+        notify.success(`Welcome, ${data.name}!`);
+        navigate('/portal/dashboard');
+      }
+    } catch (err) {
+      notify.error(err.message || "Login Failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,8 +128,8 @@ const Login = () => {
                 key={r}
                 onClick={() => setRole(r)}
                 className={`flex-1 py-2.5 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${role === r
-                    ? 'bg-white text-schoolGreen shadow-md scale-105'
-                    : 'text-gray-400 hover:text-gray-600'
+                  ? 'bg-white text-schoolGreen shadow-md scale-105'
+                  : 'text-gray-400 hover:text-gray-600'
                   }`}
               >
                 {r}

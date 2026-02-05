@@ -5,16 +5,20 @@ import {
   Menu, Bell, Search, GraduationCap, BookOpen,
   Calendar, UserPlus, CheckSquare, X
 } from 'lucide-react';
+import { getClasses, getStudents, getStaff } from '../utils/db';
+import { useToast } from '../components/ToastProvider';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const userRole = localStorage.getItem('userRole') || 'student';
 
   const handleLogout = () => {
     localStorage.removeItem('userRole');
+    toast.success('You have successfully signed out.');
     navigate('/login');
   };
 
@@ -40,6 +44,7 @@ const DashboardLayout = () => {
       { name: 'Input Scores', icon: <CheckSquare size={20} />, path: '/portal/scores' },
       { name: 'Lesson Notes', icon: <FileText size={20} />, path: '/portal/lesson-notes' },
       { name: 'Assignments', icon: <BookOpen size={20} />, path: '/portal/assignments' },
+      { name: 'Admission', icon: <UserPlus size={20} />, path: '/portal/staff-admission' },
     ],
     student: [
       { name: 'My Portal', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },
@@ -53,12 +58,118 @@ const DashboardLayout = () => {
 
   const currentMenu = menus[userRole] || menus.student;
 
-  const userLabels = {
-    admin: { title: 'Principal', sub: 'Admin Access', badge: 'P', color: 'bg-schoolGreen' },
-    teacher: { title: 'Class Teacher', sub: 'Staff Access', badge: 'T', color: 'bg-blue-600' },
-    student: { title: 'Student', sub: 'JSS 2A', badge: 'S', color: 'bg-schoolGold' }
+  // --- DYNAMIC USER DATA ---
+  const [displayUser, setDisplayUser] = React.useState({
+    title: 'Loading...',
+    sub: '...',
+    badge: 'U',
+    color: 'bg-gray-400'
+  });
+
+  React.useEffect(() => {
+    const loadUser = async () => {
+      const storedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+      if (userRole === 'admin') {
+        // Fetch latest profile or use defaults
+        // We can import getAdminProfile here, but for now let's use a simpler approach 
+        // since we can't easily import db.js inside this layout without checking circular deps or just importing it.
+        // Let's assume we can import it.
+        const { getAdminProfile } = await import('../utils/db');
+        const profile = await getAdminProfile();
+        setDisplayUser({
+          title: profile.name || 'Administrator',
+          sub: profile.role || 'Admin Access',
+          badge: 'A',
+          color: 'bg-schoolGreen'
+        });
+      } else if (userRole === 'teacher') {
+        setDisplayUser({
+          title: storedUser.name || 'Staff Member',
+          sub: storedUser.subject || 'Teacher',
+          badge: 'T',
+          color: 'bg-blue-600'
+        });
+      } else {
+        setDisplayUser({
+          title: storedUser.name || 'Student',
+          sub: storedUser.class_level || 'Student Access',
+          badge: 'S',
+          color: 'bg-schoolGold'
+        });
+      }
+    };
+    loadUser();
+  }, [userRole]);
+
+  const currentUser = displayUser;
+
+  // --- SEARCH LOGIC ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+
+  React.useEffect(() => {
+    const delaySearch = setTimeout(async () => {
+      if (searchQuery.length < 2) {
+        setSearchResults(null);
+        return;
+      }
+
+      setSearching(true);
+      const query = searchQuery.toLowerCase();
+
+      const menuResults = currentMenu.filter(m => m.name.toLowerCase().includes(query)).map(m => ({ type: 'Page', ...m }));
+
+      try {
+        const [classes, students, staff] = await Promise.all([
+          getClasses(),
+          getStudents(),
+          getStaff()
+        ]);
+
+        const classResults = classes.filter(c => c.name.toLowerCase().includes(query)).map(c => ({ type: 'Class', name: c.name, id: c.id }));
+        const studentResults = students.filter(s => s.name.toLowerCase().includes(query)).map(s => ({ type: 'Student', name: s.name, detail: s.classLevel || s.class, id: s.id }));
+        const staffResults = staff.filter(s => s.name.toLowerCase().includes(query)).map(s => ({ type: 'Staff', name: s.name, detail: s.role, id: s.id }));
+
+        setSearchResults([
+          ...menuResults,
+          ...classResults,
+          ...studentResults,
+          ...staffResults
+        ].slice(0, 8));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery, currentMenu]);
+
+  const handleSearchResultClick = (result) => {
+    setSearchQuery('');
+    setSearchResults(null);
+
+    if (result.type === 'Page') {
+      navigate(result.path);
+    } else if (result.type === 'Class') {
+      if (userRole === 'teacher') {
+        navigate('/portal/classes', { state: { selectedClassName: result.name } });
+      } else {
+        navigate('/portal/students', { state: { selectedClassName: result.name } });
+      }
+    } else if (result.type === 'Student') {
+      if (userRole === 'teacher') {
+        navigate('/portal/classes', { state: { selectedClassName: result.detail } });
+      } else {
+        navigate('/portal/students', { state: { selectedClassName: result.detail, highlightStudentId: result.id } });
+      }
+    } else if (result.type === 'Staff') {
+      navigate('/portal/staff');
+    }
   };
-  const currentUser = userLabels[userRole] || userLabels.student;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex font-sans relative overflow-hidden" >
@@ -154,14 +265,50 @@ const DashboardLayout = () => {
             <Menu />
           </button>
 
-          {/* Search Bar - Glassy */}
-          <div className="hidden md:flex items-center bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2.5 w-96 border border-white shadow-sm focus-within:ring-2 focus-within:ring-schoolGreen/20 transition-all hover:bg-white/80">
-            <Search size={18} className="text-gray-400 mr-3" />
-            <input
-              type="text"
-              placeholder="Search students, classes, records..."
-              className="bg-transparent border-none outline-none text-sm w-full text-gray-700 font-medium placeholder-gray-400"
-            />
+
+
+
+
+
+
+
+          {/* Search Bar - Glassy & Functional */}
+          <div className="hidden md:flex flex-col relative z-50">
+            <div className="flex items-center bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2.5 w-96 border border-white shadow-sm focus-within:ring-2 focus-within:ring-schoolGreen/20 transition-all hover:bg-white/80">
+              <Search size={18} className="text-gray-400 mr-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search students, classes, or pages..."
+                className="bg-transparent border-none outline-none text-sm w-full text-gray-700 font-medium placeholder-gray-400"
+              />
+              {searching && <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-schoolGreen rounded-full"></div>}
+            </div>
+
+            {/* Results Dropdown */}
+            {searchResults && (searchQuery.length > 1) && (
+              <div className="absolute top-14 left-0 w-96 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                {searchResults.length > 0 ? (
+                  <div className="divide-y divide-gray-50 max-h-[300px] overflow-y-auto">
+                    {searchResults.map((res, idx) => (
+                      <div key={idx} onClick={() => handleSearchResultClick(res)} className="px-4 py-3 hover:bg-schoolGreen/5 cursor-pointer transition flex items-center gap-3 group">
+                        <div className={`p-2 rounded-lg ${res.type === 'Page' ? 'bg-blue-50 text-blue-500' : res.type === 'Student' ? 'bg-purple-50 text-purple-500' : 'bg-orange-50 text-orange-500'}`}>
+                          {res.type === 'Page' ? <LayoutDashboard size={14} /> : res.type === 'Student' ? <GraduationCap size={14} /> : res.type === 'Class' ? <CheckSquare size={14} /> : <UserPlus size={14} />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-700 group-hover:text-schoolGreen">{res.name}</p>
+                          {res.detail && <p className="text-[10px] text-gray-400 uppercase tracking-wider">{res.detail}</p>}
+                          {!res.detail && <p className="text-[10px] text-gray-400 uppercase tracking-wider">{res.type}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-gray-400">No results found.</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Actions */}

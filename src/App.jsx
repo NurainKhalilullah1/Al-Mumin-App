@@ -33,6 +33,7 @@ import AdminNotices from './pages/dashboard/AdminNotices';
 import NoticeBoard from './pages/dashboard/NoticeBoard';
 import AdminPayments from './pages/dashboard/AdminPayments'; // <--- NEW IMPORT
 import StudentPayments from './pages/dashboard/StudentPayments'; // <--- NEW IMPORT
+import StaffAdmission from './pages/dashboard/StaffAdmission'; // <--- NEW IMPORT
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -55,41 +56,42 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           {/* --- PROTECTED DASHBOARD ROUTES --- */}
-          <Route path="/portal" element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}> {/* Layout nested inside */}
+          <Route path="/portal" element={<ProtectedRoute />}> {/* Base Login Check */}
+            <Route element={<DashboardLayout />}>
 
-              {/* Default Dashboard Home */}
+              {/* COMMON: Dashboard Home (Handles View Switching) */}
               <Route path="dashboard" element={<DashboardHome />} />
-
-              {/* 2. ADD THIS NEW ROUTE HERE */}
+              <Route path="noticeboard" element={<NoticeBoard />} />
+              <Route path="timetable" element={<StudentTimetable />} />
               <Route path="result-sheet" element={<ResultSheet />} />
 
-              {/* Connected Admin Pages */}
-              <Route path="students" element={<AdminStudents />} />
-              <Route path="results" element={<AdminResults />} />
-              <Route path="admin-classes" element={<AdminClasses />} />
-              <Route path="admin-subjects" element={<AdminSubjects />} />
-              <Route path="staff" element={<Staff />} />
-              <Route path="settings" element={<Settings />} />
+              {/* --- ADMIN ONLY ROUTES --- */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="students" element={<AdminStudents />} />
+                <Route path="results" element={<AdminResults />} />
+                <Route path="admin-classes" element={<AdminClasses />} />
+                <Route path="admin-subjects" element={<AdminSubjects />} />
+                <Route path="staff" element={<Staff />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="admin-notices" element={<AdminNotices />} />
+                <Route path="admissions" element={<AdminAdmissions />} />
+                <Route path="admin-payments" element={<AdminPayments />} />
+              </Route>
 
-              {/* Staff Views */}
-              <Route path="staff-classes" element={<StaffClasses />} />
-              <Route path="staff-subjects" element={<StaffSubjects />} />
+              {/* --- STAFF/TEACHER ROUTES --- */}
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'staff']} />}>
+                <Route path="staff-classes" element={<StaffClasses />} />
+                <Route path="staff-subjects" element={<StaffSubjects />} />
+                <Route path="classes" element={<MyClasses />} />
+                <Route path="scores" element={<ScoreSheet />} />
+                <Route path="lesson-notes" element={<LessonNotes />} />
+                <Route path="assignments" element={<Assignments />} />
+                <Route path="staff-admission" element={<StaffAdmission />} />
+              </Route>
 
-              <Route path="admin-notices" element={<AdminNotices />} /> {/* Admin Manager */}
-              <Route path="noticeboard" element={<NoticeBoard />} /> {/* Viewer */}
-
-              <Route path="admissions" element={<AdminAdmissions />} />
-              <Route path="classes" element={<MyClasses />} />
-              <Route path="scores" element={<ScoreSheet />} />
-              <Route path="lesson-notes" element={<LessonNotes />} />
-              <Route path="assignments" element={<Assignments />} />
-
-              <Route path="timetable" element={<StudentTimetable />} />
-
-              {/* Payment Routes */}
-              <Route path="admin-payments" element={<AdminPayments />} />
+              {/* --- STUDENT ROUTES --- */}
               <Route path="student-payments" element={<StudentPayments />} />
+
             </Route>
           </Route>
 

@@ -2,40 +2,101 @@
 import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 // ... imports
-import { saveScore, getSubjects } from '../../utils/db'; // Import getSubjects
+import { saveScore, getSubjects, getStudentsByClass, getClasses, getStaffByEmail, getScoresByContext } from '../../utils/db'; // Import helpers
 
 const ScoreSheet = () => {
-  // --- CONFIGURATION ---
-  const CLASSES = ["JSS 1", "JSS 2", "JSS 3", "SS 1", "SS 2", "SS 3"];
-
-  // FETCH FROM DB
-  const allSubjects = getSubjects();
-  const SUBJECTS = {
-    junior: allSubjects.filter(s => s.type === 'Junior').map(s => s.name),
-    senior: allSubjects.filter(s => s.type === 'Senior').map(s => s.name)
-  };
-
-  const MOCK_STUDENTS = [
-    { id: 'AMS/2024/005', name: 'Abdullahi Musa' },
-    { id: 'AMS/2024/006', name: 'Fatima Yusuf' },
-    { id: 'AMS/2024/007', name: 'Ibrahim Sadiq' },
-  ];
-
   // --- STATE ---
   const [activeTerm, setActiveTerm] = useState('First Term');
-  const [activeClass, setActiveClass] = useState('JSS 1');
-  // Initialize with first available subject, safe check
-  const [activeSubject, setActiveSubject] = useState(SUBJECTS.junior[0] || "Mathematics");
+  const [activeClass, setActiveClass] = useState('');
+  const [availableClasses, setAvailableClasses] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [students, setStudents] = useState([]);
   const [inputs, setInputs] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [isAssigned, setIsAssigned] = useState(false);
 
-  // Smart Subject Switcher
+  // 1. Initial Load: Classes & Subjects
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      // Fetch Subjects
+      const subjectsData = await getSubjects();
+      setAllSubjects(subjectsData || []);
+
+      // Fetch Classes
+      const classesData = await getClasses();
+      setAvailableClasses(classesData);
+
+      // Handle Staff Assignment
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const profile = await getStaffByEmail(user.email);
+
+        if (profile?.assignedClass) {
+          setActiveClass(profile.assignedClass);
+          setIsAssigned(true);
+        } else if (classesData.length > 0) {
+          // Default to first class if not assigned
+          setActiveClass(classesData[0].name);
+        }
+      } else if (classesData.length > 0) {
+        setActiveClass(classesData[0].name);
+      }
+      setLoading(false);
+    };
+    init();
+  }, []);
+
+  // 2. Fetch Students when Class Changes
+  useEffect(() => {
+    if (!activeClass) return;
+    const fetchStudents = async () => {
+      const data = await getStudentsByClass(activeClass);
+      setStudents(data || []);
+    };
+    fetchStudents();
+  }, [activeClass]);
+
+  // Derived Data
   const isJunior = activeClass.startsWith("JSS");
-  const currentSubjects = isJunior ? SUBJECTS.junior : SUBJECTS.senior;
+  const juniorSubjects = allSubjects.filter(s => s.type === 'Junior').map(s => s.name);
+  const seniorSubjects = allSubjects.filter(s => s.type === 'Senior').map(s => s.name);
+  const currentSubjects = isJunior ? juniorSubjects : seniorSubjects;
+
+  // Initialize with first available subject
+  const [activeSubject, setActiveSubject] = useState("Mathematics");
+
+
 
   // Reset subject if class type changes (e.g. JSS to SS)
+  // Reset subject if class type changes (e.g. JSS to SS) or subjects load
   useEffect(() => {
     setActiveSubject(currentSubjects[0] || "");
-  }, [isJunior]);
+  }, [isJunior, allSubjects]);
+
+  // Handle Score Loading on change of Class, Subject, or Term
+  useEffect(() => {
+    if (!activeClass || !activeSubject || !activeTerm) return;
+
+    const loadExistingScores = async () => {
+      const existingScores = await getScoresByContext(activeClass, activeSubject, activeTerm);
+
+      const newInputs = {};
+      existingScores.forEach(res => {
+        newInputs[res.student_id] = {
+          test1: res.test1,
+          test2: res.test2,
+          midTerm: res.mid_term,
+          exam: res.exam,
+          total: res.total
+        };
+      });
+      setInputs(newInputs);
+    };
+
+    loadExistingScores();
+  }, [activeClass, activeSubject, activeTerm]);
 
   const handleInputChange = (studentId, field, value) => {
     setInputs(prev => ({
@@ -45,7 +106,7 @@ const ScoreSheet = () => {
   };
 
   const handleSaveAll = () => {
-    MOCK_STUDENTS.forEach(student => {
+    students.forEach(student => {
       const data = inputs[student.id];
       if (data) {
         saveScore(
@@ -76,10 +137,15 @@ const ScoreSheet = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Class</label>
-            <select className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-sm"
-              value={activeClass} onChange={(e) => setActiveClass(e.target.value)}>
-              {CLASSES.map(c => <option key={c}>{c}</option>)}
+            <select
+              className={`w-full p-3 border rounded-xl outline-none font-bold text-sm transition-all ${isAssigned ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-gray-50 border-gray-200 text-gray-700'}`}
+              value={activeClass}
+              onChange={(e) => setActiveClass(e.target.value)}
+              disabled={isAssigned}
+            >
+              {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
+            {isAssigned && <p className="text-[10px] text-green-600 font-bold mt-1 ml-1">Locked to your assigned class</p>}
           </div>
 
           <div>
@@ -116,7 +182,9 @@ const ScoreSheet = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {MOCK_STUDENTS.map((student) => {
+            {students.length === 0 ? (
+              <tr><td colSpan="6" className="p-8 text-center text-gray-400 font-bold">No students found in {activeClass}.</td></tr>
+            ) : students.map((student) => {
               const sData = inputs[student.id] || {};
               const total = (parseInt(sData.test1) || 0) + (parseInt(sData.test2) || 0) + (parseInt(sData.midTerm) || 0) + (parseInt(sData.exam) || 0);
 
@@ -126,10 +194,10 @@ const ScoreSheet = () => {
                     <p className="font-bold text-gray-800 text-sm">{student.name}</p>
                     <p className="text-xs text-gray-400">{student.id}</p>
                   </td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" onChange={(e) => handleInputChange(student.id, 'test1', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" onChange={(e) => handleInputChange(student.id, 'test2', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-blue-50/30" placeholder="-" onChange={(e) => handleInputChange(student.id, 'midTerm', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-yellow-50/30" placeholder="-" onChange={(e) => handleInputChange(student.id, 'exam', e.target.value)} /></td>
+                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test1 || ''} onChange={(e) => handleInputChange(student.id, 'test1', e.target.value)} /></td>
+                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test2 || ''} onChange={(e) => handleInputChange(student.id, 'test2', e.target.value)} /></td>
+                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-blue-50/30" placeholder="-" value={sData.midTerm || ''} onChange={(e) => handleInputChange(student.id, 'midTerm', e.target.value)} /></td>
+                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-yellow-50/30" placeholder="-" value={sData.exam || ''} onChange={(e) => handleInputChange(student.id, 'exam', e.target.value)} /></td>
                   <td className="p-4 text-center"><span className={`font-bold block py-1 px-3 rounded-lg ${total >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{total}</span></td>
                 </tr>
               );

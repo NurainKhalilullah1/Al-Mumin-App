@@ -34,7 +34,12 @@ const AdminSubjects = () => {
             department: formData.type === 'Junior' ? 'General' : formData.department
         };
 
-        await saveSubject(finalData);
+        const result = await saveSubject(finalData);
+        if (!result.success) {
+            notify.error("Failed to save subject. " + (result.error?.message || ""));
+            return;
+        }
+
         loadSubjects();
         setShowModal(false);
         resetForm();

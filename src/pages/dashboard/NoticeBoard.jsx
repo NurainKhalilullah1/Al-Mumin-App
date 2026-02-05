@@ -10,15 +10,18 @@ const NoticeBoard = () => {
     const userRole = localStorage.getItem('userRole') || 'student';
 
     useEffect(() => {
-        const allNotices = getNotices();
-        // Simple Filter Logic
-        const filtered = allNotices.filter(n => n.active && (
-            n.audience === 'Public' ||
-            n.audience === 'All' ||
-            (userRole === 'teacher' && n.audience === 'Staff') ||
-            (userRole === 'student' && n.audience === 'Student')
-        ));
-        setNotices(filtered);
+        const fetchNotices = async () => {
+            const allNotices = await getNotices();
+            // Simple Filter Logic
+            const filtered = (allNotices || []).filter(n => n.active && (
+                n.audience === 'Public' ||
+                n.audience === 'All' ||
+                (userRole === 'teacher' && n.audience === 'Staff') ||
+                (userRole === 'student' && n.audience === 'Student')
+            ));
+            setNotices(filtered);
+        };
+        fetchNotices();
     }, [userRole]);
 
     return (

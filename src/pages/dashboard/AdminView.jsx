@@ -1,12 +1,41 @@
 import React from 'react';
 import {
   Users, CreditCard, TrendingUp, UserPlus,
-  FileText, CheckCircle, Upload, ArrowRight
+  FileText, CheckCircle, Upload, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getDashboardStats } from '../../utils/db';
 
 const AdminView = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = React.useState({
+    students: 0,
+    fees: 0,
+    admissions: 0,
+    staff: 0
+  });
+
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const fetchStats = async () => {
+    const data = await getDashboardStats();
+    setStats(data);
+  };
+
+  React.useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const formatCurrency = (amount) => {
+    if (amount >= 1000000) return `₦${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `₦${(amount / 1000).toFixed(1)}K`;
+    return `₦${amount}`;
+  };
 
   return (
     <div>
@@ -14,17 +43,20 @@ const AdminView = () => {
       <div className="flex flex-col md:flex-row justify-between items-end mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold text-schoolGreen">Principal's Cockpit</h1>
-          <p className="text-gray-500 mt-1">Good Morning, Mr. Ibrahim. Here is the school's pulse today.</p>
+          <p className="text-gray-500 mt-1">{getTimeGreeting()}, Principal.</p>
         </div>
+        <button onClick={fetchStats} className="bg-white text-gray-500 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm flex items-center gap-2 font-bold text-sm" title="Refresh Data">
+          <RefreshCw size={18} /> Refresh Data
+        </button>
       </div>
 
       <div className="animate-in fade-in duration-500">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Total Students" value="1,240" icon={<Users />} color="bg-blue-600" />
-          <StatCard title="Fees Collected" value="₦45.2M" sub="85% Target" icon={<CreditCard />} color="bg-green-600" />
-          <StatCard title="Pending Admissions" value="12" sub="Action Needed" icon={<UserPlus />} color="bg-orange-500" />
-          <StatCard title="Staff Present" value="42/45" icon={<CheckCircle />} color="bg-purple-600" />
+          <StatCard title="Total Students" value={stats.students} icon={<Users />} color="bg-blue-600" />
+          <StatCard title="Fees Collected" value={formatCurrency(stats.fees)} sub="Verified Payments" icon={<CreditCard />} color="bg-green-600" />
+          <StatCard title="Pending Admissions" value={stats.admissions} sub="Action Needed" icon={<UserPlus />} color="bg-orange-500" />
+          <StatCard title="Number of Staff" value={stats.staff} icon={<CheckCircle />} color="bg-purple-600" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

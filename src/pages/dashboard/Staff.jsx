@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Users, Search, Plus, Trash2, Edit,
-    Mail, Phone, Briefcase, Filter, X
+    Mail, Phone, Briefcase, Filter, X, RefreshCw
 } from 'lucide-react';
-import { getStaff, saveStaff, deleteStaff } from '../../utils/db';
+import { getStaff, saveStaff, deleteStaff, getClasses } from '../../utils/db';
+import { useToast } from '../../components/ToastProvider';
 
 const Staff = () => {
+    const notify = useToast(); // Add useToast hook
     const [staffList, setStaffList] = useState([]);
     const [filteredList, setFilteredList] = useState([]);
     const [search, setSearch] = useState('');
@@ -17,13 +19,18 @@ const Staff = () => {
     const [form, setForm] = useState({
         id: '', name: '', role: 'Teacher',
         department: 'Science', subject: '',
-        phone: '', email: ''
+        phone: '', email: '', assignedClass: '', password: ''
     });
+    const [availableClasses, setAvailableClasses] = useState([]);
 
-    const fetchStaff = () => {
-        const data = getStaff();
+    const fetchStaff = async () => {
+        const data = await getStaff();
         setStaffList(data);
         setFilteredList(data);
+
+        // Also load classes for dropdown
+        const classes = await getClasses();
+        setAvailableClasses(classes);
     };
 
     useEffect(() => {
@@ -48,9 +55,20 @@ const Staff = () => {
         setFilteredList(result);
     }, [search, filterRole, staffList]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        saveStaff(form);
+        const result = await saveStaff(form);
+
+        if (result && result.success && result.password) {
+            // New Staff Created
+            alert(`Staff Created Successfully!\n\nName: ${result.name}\nEmail: ${result.email}\nPassword: ${result.password}\n\nPlease copy these details.`);
+            notify.success("Staff Created with Credentials");
+        } else if (result && result.success === false) {
+            notify.error("Error saving staff member");
+        } else {
+            notify.success("Staff updated successfully");
+        }
+
         fetchStaff();
         setShowModal(false);
         resetForm();
@@ -83,12 +101,17 @@ const Staff = () => {
                     <h1 className="text-3xl font-serif font-bold text-schoolGreen">Staff Directory</h1>
                     <p className="text-gray-500 mt-1">Manage teachers and non-academic staff.</p>
                 </div>
-                <button
-                    onClick={() => { resetForm(); setShowModal(true); }}
-                    className="bg-schoolGreen text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center shadow-lg hover:bg-schoolGold transition mt-4 md:mt-0"
-                >
-                    <Plus size={18} className="mr-2" /> Add New Staff
-                </button>
+                <div className="flex gap-2 mt-4 md:mt-0">
+                    <button onClick={fetchStaff} className="bg-white text-gray-500 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm" title="Refresh Data">
+                        <RefreshCw size={20} />
+                    </button>
+                    <button
+                        onClick={() => { resetForm(); setShowModal(true); }}
+                        className="bg-schoolGreen text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center shadow-lg hover:bg-schoolGold transition"
+                    >
+                        <Plus size={18} className="mr-2" /> Add New Staff
+                    </button>
+                </div>
             </div>
 
             {/* --- CONTROLS --- */}
@@ -247,12 +270,35 @@ const Staff = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
                                     <input
                                         type="email" required
                                         className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-schoolGreen"
                                         value={form.email}
                                         onChange={e => setForm({ ...form, email: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Assigned Class & Password Display */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Assign Class (Optional)</label>
+                                    <select
+                                        className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-schoolGreen"
+                                        value={form.assignedClass || ''}
+                                        onChange={e => setForm({ ...form, assignedClass: e.target.value })}
+                                    >
+                                        <option value="">-- None --</option>
+                                        {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label>
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        className="w-full p-3 bg-gray-100 rounded-xl border border-gray-200 text-gray-500 cursor-not-allowed"
+                                        value={form.password || '(Auto-generated)'}
                                     />
                                 </div>
                             </div>

@@ -7,48 +7,63 @@ const ResultSheet = () => {
   const navigate = useNavigate();
   const [academicRecords, setAcademicRecords] = useState([]);
   const [source, setSource] = useState('loading');
-
-  // Mock Student Profile (In real app, fetch from DB)
-  const studentProfile = {
-    name: "Abdullahi Musa",
-    admNo: "AMS/2024/005",
-    class: "JSS 2A",
-    session: "2025/2026",
-  };
+  const [studentProfile, setStudentProfile] = useState(null);
 
   useEffect(() => {
-    // 1. Fetch Real Data
-    const realData = getStudentResults("AMS/2024/005");
+    const fetchAllData = async () => {
+      // 1. Get Current Student from Storage
+      const userStr = localStorage.getItem('currentUser');
+      if (!userStr) {
+        setSource('empty');
+        return;
+      }
+      const user = JSON.parse(userStr);
 
-    if (realData && realData.length > 0) {
-      // Calculate Average if real data exists
-      const updatedData = realData.map(term => {
-        // FILTER: Only show Approved results
-        const approvedResults = term.results.filter(r => r.approvalStatus === 'Approved');
+      // Set Profile
+      const profile = {
+        name: user.name || "Student",
+        admNo: user.admission_number || "N/A",
+        class: user.classLevel || user.classes?.name || "N/A",
+        session: "2025/2026", // Dynamic session could be added later
+      };
+      setStudentProfile(profile);
 
-        const totalScore = approvedResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
-        const avg = approvedResults.length > 0 ? (totalScore / approvedResults.length).toFixed(1) : 0;
+      // 2. Fetch Real Data
+      const realData = await getStudentResults(user.id);
 
-        return { ...term, results: approvedResults, average: avg };
-      });
-      setAcademicRecords(updatedData);
-      setSource('real');
-    } else {
-      // 2. Fallback Mock Data (Updated to match new structure)
-      setAcademicRecords([
-        {
-          termName: "First Term (Example)",
-          position: "N/A",
-          outOf: "32",
-          average: "Calculating...",
-          results: [
-            { subject: "Mathematics", test1: 10, test2: 10, midTerm: 18, exam: 50, total: 88, grade: "A", remark: "Excellent" },
-            { subject: "English", test1: 8, test2: 9, midTerm: 15, exam: 45, total: 77, grade: "B", remark: "Very Good" },
-          ]
-        }
-      ]);
-      setSource('mock');
-    }
+      if (realData && realData.length > 0) {
+        // Calculate Average if real data exists
+        const updatedData = realData.map(term => {
+          // FILTER: Only show Approved results
+          const approvedResults = term.results.filter(r => r.approvalStatus === 'Approved');
+          // If NO results are approved, we might want to show a message later
+
+          const totalScore = approvedResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+          const avg = approvedResults.length > 0 ? (totalScore / approvedResults.length).toFixed(1) : 0;
+
+          // Add a flag to indicate if approval is pending for the whole term
+          const isPending = term.results.length > 0 && approvedResults.length === 0;
+
+          return { ...term, results: approvedResults, average: avg, isPending };
+        });
+        setAcademicRecords(updatedData);
+        setSource('real');
+      } else {
+        // 3. Fallback Mock Data if no results found
+        setAcademicRecords([
+          {
+            termName: "Broadsheet Preview (Empty)",
+            position: "N/A",
+            outOf: "0",
+            average: "0.0",
+            results: []
+          }
+        ]);
+        setSource('mock');
+      }
+    };
+
+    fetchAllData();
   }, []);
 
   const handlePrint = () => {
@@ -114,10 +129,10 @@ const ResultSheet = () => {
               Student Report Sheet - {termData.termName}
             </h2>
             <div className="grid grid-cols-4 gap-y-2 gap-x-4 text-xs">
-              <div><span className="font-bold text-gray-500 uppercase block">Name:</span> <span className="font-serif font-bold text-sm text-gray-900">{studentProfile.name}</span></div>
-              <div><span className="font-bold text-gray-500 uppercase block">Adm No:</span> <span className="font-bold text-gray-900">{studentProfile.admNo}</span></div>
-              <div><span className="font-bold text-gray-500 uppercase block">Class:</span> <span className="font-bold text-gray-900">{studentProfile.class}</span></div>
-              <div><span className="font-bold text-gray-500 uppercase block">Session:</span> <span className="font-bold text-gray-900">{studentProfile.session}</span></div>
+              <div><span className="font-bold text-gray-500 uppercase block">Name:</span> <span className="font-serif font-bold text-sm text-gray-900">{studentProfile?.name}</span></div>
+              <div><span className="font-bold text-gray-500 uppercase block">Adm No:</span> <span className="font-bold text-gray-900">{studentProfile?.admNo}</span></div>
+              <div><span className="font-bold text-gray-500 uppercase block">Class:</span> <span className="font-bold text-gray-900">{studentProfile?.class}</span></div>
+              <div><span className="font-bold text-gray-500 uppercase block">Session:</span> <span className="font-bold text-gray-900">{studentProfile?.session}</span></div>
             </div>
           </div>
 
@@ -136,22 +151,36 @@ const ResultSheet = () => {
               </tr>
             </thead>
             <tbody>
-              {termData.results.map((row, rIndex) => (
-                <tr key={rIndex} className="even:bg-gray-50 print:even:bg-transparent">
-                  <td className="border border-gray-300 p-2 font-bold text-gray-800">{row.subject}</td>
-
-                  {/* BREAKDOWN COLUMNS */}
-                  <td className="border border-gray-300 p-1 text-center text-gray-600">{row.test1 || '-'}</td>
-                  <td className="border border-gray-300 p-1 text-center text-gray-600">{row.test2 || '-'}</td>
-                  <td className="border border-gray-300 p-1 text-center text-gray-600">{row.midTerm || '-'}</td>
-                  <td className="border border-gray-300 p-1 text-center text-gray-600 font-bold">{row.exam || '-'}</td>
-
-                  {/* TOTAL & GRADE */}
-                  <td className="border border-gray-300 p-1 text-center font-bold text-schoolGreen bg-green-50">{row.total}</td>
-                  <td className={`border border-gray-300 p-1 text-center font-bold ${row.grade === 'F' ? 'text-red-600' : 'text-gray-800'}`}>{row.grade || '-'}</td>
-                  <td className="border border-gray-300 p-2 text-[10px] uppercase font-bold text-gray-500">{row.remark}</td>
+              {termData.isPending ? (
+                <tr>
+                  <td colSpan="8" className="text-center p-8 text-gray-500 italic border border-gray-300">
+                    <AlertCircle className="inline-block mr-2 text-schoolGold" size={20} />
+                    Results for this term are currently awaiting approval. Please check back later.
+                  </td>
                 </tr>
-              ))}
+              ) : termData.results.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center p-8 text-gray-500 italic border border-gray-300">
+                    No results recorded for this term yet.
+                  </td>
+                </tr>
+              ) : (
+                termData.results.map((row, rIndex) => (
+                  <tr key={rIndex} className="even:bg-gray-50 print:even:bg-transparent">
+                    <td className="border border-gray-300 p-2 font-bold text-gray-800">{row.subject}</td>
+
+                    {/* BREAKDOWN COLUMNS */}
+                    <td className="border border-gray-300 p-1 text-center text-gray-600">{row.test1 || '-'}</td>
+                    <td className="border border-gray-300 p-1 text-center text-gray-600">{row.test2 || '-'}</td>
+                    <td className="border border-gray-300 p-1 text-center text-gray-600">{row.midTerm || '-'}</td>
+                    <td className="border border-gray-300 p-1 text-center text-gray-600 font-bold">{row.exam || '-'}</td>
+
+                    {/* TOTAL & GRADE */}
+                    <td className="border border-gray-300 p-1 text-center font-bold text-schoolGreen bg-green-50">{row.total}</td>
+                    <td className={`border border-gray-300 p-1 text-center font-bold ${row.grade === 'F' ? 'text-red-600' : 'text-gray-800'}`}>{row.grade || '-'}</td>
+                    <td className="border border-gray-300 p-2 text-[10px] uppercase font-bold text-gray-500">{row.remark}</td>
+                  </tr>
+                )))}
             </tbody>
           </table>
 

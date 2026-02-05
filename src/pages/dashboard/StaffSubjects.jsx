@@ -6,7 +6,15 @@ const StaffSubjects = () => {
     const [subjects, setSubjects] = useState([]);
 
     useEffect(() => {
-        setSubjects(getSubjects());
+        const fetchData = async () => {
+            try {
+                const data = await getSubjects();
+                setSubjects(data || []);
+            } catch (error) {
+                console.error("Failed to load subjects:", error);
+            }
+        };
+        fetchData();
     }, []);
 
     return (

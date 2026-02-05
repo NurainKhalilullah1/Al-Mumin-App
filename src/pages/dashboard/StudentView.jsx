@@ -4,7 +4,7 @@ import {
   BookOpen, Calendar, Download,
   FileText, CheckCircle, Award
 } from 'lucide-react';
-import { getAssignments, getStudentStats, getTodaysClasses, getNotices } from '../../utils/db'; // <--- IMPORT DB
+import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats } from '../../utils/db'; // <--- IMPORT DB
 
 const StudentView = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,14 +21,37 @@ const StudentView = () => {
     setAssignmentList(getAssignments());
 
     // 2. Fetch Stats
-    setStats(getStudentStats("AMS/2024/005"));
+    // setStats(getStudentStats("AMS/2024/005")); // OLD MOCK
+
+    const fetchRealStats = async () => {
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        // Fetch real attendance
+        const attStats = await getStudentAttendanceStats(user.id); // Assuming user.id is student ID
+        setStats(prev => ({
+          ...prev, // Keep mock fees/behavior for now unless I have real sources
+          feesPaid: true, // Mock
+          behavior: 'Excellent', // Mock
+          attendance: attStats.percentage,
+          presentCount: attStats.present,
+          absentCount: attStats.absent,
+          attendanceRemark: attStats.percentage >= 90 ? 'Excellent' : attStats.percentage >= 75 ? 'Good' : 'Needs Improvement'
+        }));
+      }
+    };
+    fetchRealStats();
 
     // 3. Fetch Timetable
     setTodaysClasses(getTodaysClasses());
 
     // 4. Fetch Latest Notice
-    const notices = getNotices().filter(n => n.active && (n.audience === 'Student' || n.audience === 'All' || n.audience === 'Public'));
-    if (notices.length > 0) setLatestNotice(notices[notices.length - 1]);
+    const fetchNotices = async () => {
+      const notices = await getNotices();
+      const activeNotices = notices.filter(n => n.active && (n.audience === 'Student' || n.audience === 'All' || n.audience === 'Public'));
+      if (activeNotices.length > 0) setLatestNotice(activeNotices[0]); // Get first/latest
+    };
+    fetchNotices();
   }, []);
 
   if (!stats) return <div className="p-10 text-center">Loading Portal...</div>;
@@ -65,11 +88,22 @@ const StudentView = () => {
                 <p className="text-green-600 text-xs">{stats.feesPaid ? 'No outstanding balance' : 'Contact Bursary'}</p>
               </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mr-4"><Calendar size={24} /></div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-gray-800 font-bold text-lg">{stats.attendance}% Present</p>
-                <p className="text-gray-400 text-xs">{stats.attendanceRemark}</p>
+                <p className="text-gray-800 font-bold text-lg mb-1">Attendance</p>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p><span className="font-bold text-green-600">{stats.presentCount}</span> Days Present</p>
+                  <p><span className="font-bold text-red-400">{stats.absentCount}</span> Days Absent</p>
+                </div>
+              </div>
+
+              {/* CIRCULAR PROGRESS RING */}
+              <div className="relative w-16 h-16">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <path className="text-gray-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                  <path className="text-schoolGreen transition-all duration-1000 ease-out" strokeDasharray={`${stats.attendance}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center font-bold text-xs text-schoolGreen">{stats.attendance}%</div>
               </div>
             </div>
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center">

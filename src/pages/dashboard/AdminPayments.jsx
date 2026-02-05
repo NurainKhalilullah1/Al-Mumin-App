@@ -16,10 +16,11 @@ const AdminPayments = () => {
         loadData();
     }, []);
 
-    const loadData = () => {
-        const allPayments = getPayments();
+    const loadData = async () => {
+        const allPayments = await getPayments();
         setPayments(allPayments);
-        setBankDetails(getAdminBankDetails());
+        const bank = await getAdminBankDetails();
+        setBankDetails(bank);
 
         // Calc Stats
         const revenue = allPayments
@@ -52,14 +53,26 @@ const AdminPayments = () => {
         }
     };
 
-    const filteredPayments = payments.filter(p =>
-        p.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPayments = payments.filter(p => {
+        const term = searchTerm.toLowerCase();
+        return (
+            (p.studentName && p.studentName.toLowerCase().includes(term)) ||
+            (p.id && p.id.toLowerCase().includes(term)) ||
+            (p.classLevel && p.classLevel.toLowerCase().includes(term)) ||
+            (p.status && p.status.toLowerCase().includes(term)) ||
+            String(p.amount).includes(term)
+        );
+    });
 
     useEffect(() => {
         if (showSettings) {
-            setBankDetails(getAdminBankDetails());
+            if (showSettings) {
+                const loadSettings = async () => {
+                    const details = await getAdminBankDetails();
+                    setBankDetails(details);
+                };
+                loadSettings();
+            }
         }
     }, [showSettings]);
 
@@ -215,7 +228,7 @@ const AdminPayments = () => {
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search student or ID..."
+                            placeholder="Search transactions, students, or class..."
                             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-schoolGreen/20"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, GraduationCap, CheckCircle } from 'lucide-react';
-import { getClasses, saveClass, deleteClass } from '../../utils/db'; // New DB functions
+import { getClasses, saveClass, deleteClass, getStaff, getStudentsByClass } from '../../utils/db'; // New DB functions
 import { useToast } from '../../components/ToastProvider';
 
 const AdminClasses = () => {
@@ -12,34 +12,63 @@ const AdminClasses = () => {
     // Form State
     const [formData, setFormData] = useState({ id: null, name: '', level: 'JSS 1', formTeacher: '' });
 
+    const [teachers, setTeachers] = useState([]);
+
+    const [viewClass, setViewClass] = useState(null);
+    const [classStudents, setClassStudents] = useState([]);
+
     useEffect(() => {
-        loadClasses();
+        loadData();
     }, []);
 
-    const loadClasses = async () => {
+    const loadData = async () => {
         setLoading(true);
+        const [classesData, staffData] = await Promise.all([getClasses(), getStaff()]);
+        setClasses(classesData);
+        setTeachers(staffData.filter(s => s.role === 'Teacher' || s.role === 'Admin'));
+        setLoading(false);
+    };
+
+    const loadClasses = async () => {
         const data = await getClasses();
         setClasses(data);
-        setLoading(false);
+    };
+
+    const loadClassStudents = async (className) => {
+        const students = await getStudentsByClass(className);
+        setClassStudents(students);
+    };
+
+    const handleViewClass = async (cls) => {
+        setViewClass(cls);
+        await loadClassStudents(cls.name);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.name) return notify.error("Class Name is required");
 
-        await saveClass(formData);
+        const result = await saveClass(formData);
+
+        if (!result.success) {
+            notify.error("Failed to save class: " + (result.error?.message || "Unknown error"));
+            return;
+        }
+
         loadClasses();
         setShowModal(false);
         setFormData({ id: null, name: '', level: 'JSS 1', formTeacher: '' });
         notify.success("Class saved successfully!");
     };
 
-    const handleEdit = (cls) => {
+    const handleEdit = (cls, e) => {
+        e.stopPropagation(); // Prevent opening view modal
         setFormData(cls);
         setShowModal(true);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id, e) => {
+        e.stopPropagation(); // Prevent opening view modal
         if (window.confirm("Delete this class?")) {
             await deleteClass(id);
             loadClasses();
@@ -52,7 +81,7 @@ const AdminClasses = () => {
             <div className="flex justify-between items-end mb-8">
                 <div>
                     <h1 className="text-3xl font-serif font-bold text-schoolGreen">Class Management</h1>
-                    <p className="text-gray-500 mt-1">Manage class arms, levels, and form teachers.</p>
+                    <p className="text-gray-500 mt-1">Manage class arms, levels, and class teachers.</p>
                 </div>
                 <button
                     onClick={() => { setFormData({ id: null, name: '', level: 'JSS 1', formTeacher: '' }); setShowModal(true); }}
@@ -64,10 +93,14 @@ const AdminClasses = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {classes.map((cls) => (
-                    <div key={cls.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative group hover:shadow-md transition">
+                    <div
+                        key={cls.id}
+                        onClick={() => handleViewClass(cls)}
+                        className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative group hover:shadow-md transition cursor-pointer"
+                    >
                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition flex gap-2">
-                            <button onClick={() => handleEdit(cls)} className="p-2 bg-gray-100 rounded-lg text-gray-500 hover:text-schoolGreen"><Edit2 size={14} /></button>
-                            <button onClick={() => handleDelete(cls.id)} className="p-2 bg-red-50 rounded-lg text-red-500 hover:text-red-700"><Trash2 size={14} /></button>
+                            <button onClick={(e) => handleEdit(cls, e)} className="p-2 bg-gray-100 rounded-lg text-gray-500 hover:text-schoolGreen"><Edit2 size={14} /></button>
+                            <button onClick={(e) => handleDelete(cls.id, e)} className="p-2 bg-red-50 rounded-lg text-red-500 hover:text-red-700"><Trash2 size={14} /></button>
                         </div>
 
                         <div className="flex items-center gap-4 mb-4">
@@ -81,14 +114,44 @@ const AdminClasses = () => {
                         </div>
 
                         <div className="border-t border-gray-100 pt-4 mt-2">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">Form Teacher</p>
-                            <p className="text-sm font-bold text-gray-700">{cls.formTeacher || 'Not Assigned'}</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">Class Teacher</p>
+                            <p className="text-sm font-bold text-gray-700">{cls.form_teacher || cls.formTeacher || 'Not Assigned'}</p>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* MODAL */}
+            {/* CLASS STUDENTS MODAL */}
+            {viewClass && (
+                <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-2xl rounded-3xl p-8 shadow-2xl relative animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+                        <button onClick={() => setViewClass(null)} className="absolute top-5 right-5 text-gray-400 hover:text-red-500"><X size={24} /></button>
+                        <h2 className="text-2xl font-bold text-schoolGreen mb-2">{viewClass.name} - Students</h2>
+                        <p className="text-gray-500 text-sm mb-6">Total Students: {classStudents.length}</p>
+
+                        <div className="space-y-2">
+                            {classStudents.length > 0 ? classStudents.map((s, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">{s.first_name[0]}</div>
+                                        <div>
+                                            <p className="font-bold text-gray-800 text-sm">{s.name}</p>
+                                            <p className="text-xs text-gray-400">{s.admission_number || s.id}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-bold text-gray-500 bg-white px-2 py-1 rounded border border-gray-100">{s.gender === 'M' || s.gender === 'Male' ? 'Male' : 'Female'}</span>
+                                </div>
+                            )) : (
+                                <div className="text-center py-10 text-gray-400">
+                                    <p>No students found in this class.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT/CREATE MODAL */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative animate-in zoom-in-95">
@@ -107,8 +170,17 @@ const AdminClasses = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Form Teacher</label>
-                                <input type="text" value={formData.formTeacher} onChange={e => setFormData({ ...formData, formTeacher: e.target.value })} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen" placeholder="Teacher Name" />
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Class Teacher (Optional)</label>
+                                <select
+                                    value={formData.formTeacher}
+                                    onChange={e => setFormData({ ...formData, formTeacher: e.target.value })}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen"
+                                >
+                                    <option value="">-- Select Teacher --</option>
+                                    {teachers.map(t => (
+                                        <option key={t.id} value={t.name}>{t.name} ({t.subject || 'Staff'})</option>
+                                    ))}
+                                </select>
                             </div>
                             <button type="submit" className="w-full mt-4 bg-schoolGreen text-white py-3 rounded-xl font-bold uppercase hover:bg-schoolGold transition">Save Class</button>
                         </form>

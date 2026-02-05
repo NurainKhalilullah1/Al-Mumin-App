@@ -36,7 +36,7 @@ const Home = () => {
         <div className="relative z-10 h-full flex flex-col justify-center items-center text-center px-4 pt-32 pb-20">
           <div className="max-w-5xl" data-aos="fade-up">
             <span className="inline-block py-1.5 px-5 border border-white/20 rounded-full text-xs font-bold uppercase tracking-[0.2em] text-schoolGold mb-8 bg-black/40 backdrop-blur-md shadow-lg">
-              Est. 2010 • Lagos, Nigeria
+              Est. 2015 • Lagos, Nigeria
             </span>
             <h1 className="text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-white leading-tight mb-8 drop-shadow-2xl">
               Cultivating <br/> <span className="italic text-schoolGold">Noble Minds</span>
@@ -111,7 +111,7 @@ const Home = () => {
                   <Globe size={40} className="text-schoolGold mb-6" />
                   <h3 className="text-2xl font-serif font-bold mb-4">Global Curriculum</h3>
                   <p className="text-gray-300 leading-relaxed">
-                    We prepare students for IGCSE, SAT, and WAEC, ensuring they can gain admission into top universities in the UK, US, and Canada.
+                    We prepare students for WAEC, JAMB, NECO and GCE ensuring they can gain admission into top universities in Nigeria.
                   </p>
               </div>
               <button className="relative z-10 mt-8 text-sm font-bold uppercase tracking-widest text-schoolGold flex items-center group-hover:translate-x-2 transition-transform">
@@ -123,8 +123,8 @@ const Home = () => {
             <div className="md:col-span-1 flex flex-col gap-8">
               <div className="flex-1 bg-cream p-8 rounded-3xl border border-gray-100 hover:shadow-xl transition-all" data-aos="fade-up" data-aos-delay="100">
                 <Star size={32} className="text-schoolGold mb-4" />
-                <h3 className="text-xl font-serif font-bold text-schoolGreen mb-2">Hifz Academy</h3>
-                <p className="text-gray-600 text-sm">Dedicated Quran memorization track integrated into school hours. 50+ Huffaz graduated.</p>
+                <h3 className="text-xl font-serif font-bold text-schoolGreen mb-2">Weekend Hifz Class</h3>
+                <p className="text-gray-600 text-sm">Dedicated Quran memorization track integrated into school and weekend hours.</p>
               </div>
               <div className="flex-1 bg-cream p-8 rounded-3xl border border-gray-100 hover:shadow-xl transition-all" data-aos="fade-up" data-aos-delay="200">
                 <Shield size={32} className="text-schoolGold mb-4" />

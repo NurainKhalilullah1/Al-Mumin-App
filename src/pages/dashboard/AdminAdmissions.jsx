@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, User, Plus, Save, UserPlus } from 'lucide-react';
+import { Check, X, User, Plus, Save, UserPlus, RefreshCw } from 'lucide-react';
 import { getApplicants, updateApplicantStatus, saveStudent, saveMultipleStudents, getClasses } from '../../utils/db';
 import { useToast } from '../../components/ToastProvider';
 
@@ -24,33 +24,40 @@ const AdminAdmissions = () => {
         loadClasses();
     }, []);
 
-    const loadApplicants = () => {
-        setApplicants(getApplicants());
+    const loadApplicants = async () => {
+        const data = await getApplicants();
+        setApplicants(data);
     };
 
-    const loadClasses = () => {
-        const cls = getClasses();
+    const loadClasses = async () => {
+        const cls = await getClasses();
         setAvailableClasses(cls);
         if (cls.length > 0) {
             setFormData(prev => ({ ...prev, classLevel: cls[0].name }));
         }
     };
 
-    const handleStatus = (id, status) => {
+    const handleStatus = async (id, status) => {
         const confirmMsg = status === 'Admitted' ? "Admit this student?" : "Reject this application?";
         if (window.confirm(confirmMsg)) {
-            updateApplicantStatus(id, status);
+            await updateApplicantStatus(id, status);
             loadApplicants();
             notify.success(`Applicant marked as ${status}`);
         }
     };
 
-    const handleRegisterSubmit = (e) => {
+    const handleRegisterSubmit = async (e) => {
         e.preventDefault();
         if (!formData.name || !formData.parentName || !formData.classLevel) return notify.error("Please fill all required fields");
 
-        const newStudent = saveStudent(formData);
-        notify.success(`Student Registered Successfully! ID: ${newStudent.id}`);
+        const newStudent = await saveStudent(formData);
+
+        if (newStudent && newStudent.success && newStudent.password) {
+            alert(`Student Registered!\n\nName: ${newStudent.name}\nID: ${newStudent.id}\nPassword: ${newStudent.password}`);
+            notify.success(`Student Registered! ID: ${newStudent.id}`);
+        } else {
+            notify.success(`Student Registered Successfully!`);
+        }
 
         setFormData({
             name: '', gender: 'M',
@@ -99,6 +106,9 @@ const AdminAdmissions = () => {
                     <h1 className="text-3xl font-serif font-bold text-schoolGreen">Admissions Portal</h1>
                     <p className="text-gray-500 mt-1">Manage applications or directly register new students.</p>
                 </div>
+                <button onClick={loadApplicants} className="mb-4 md:mb-0 bg-white text-gray-500 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm self-end" title="Refresh Applicants">
+                    <RefreshCw size={20} />
+                </button>
 
                 <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 mt-4 md:mt-0 flex">
                     <button onClick={() => setActiveTab('applicants')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'applicants' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}>
