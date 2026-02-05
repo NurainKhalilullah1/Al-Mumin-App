@@ -140,8 +140,11 @@ const AdminResults = () => {
                             <div
                                 key={cls.id}
                                 onClick={() => handleClassClick(cls)}
-                                className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-schoolGreen/20 hover:border-schoolGreen transition cursor-pointer group"
+                                className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-schoolGreen/20 hover:border-schoolGreen transition cursor-pointer group relative overflow-hidden"
                             >
+                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition">
+                                    <FileText size={60} />
+                                </div>
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="w-12 h-12 bg-green-50 text-schoolGreen rounded-xl flex items-center justify-center group-hover:bg-schoolGreen group-hover:text-white transition">
                                         <FileText size={24} />
@@ -149,7 +152,11 @@ const AdminResults = () => {
                                     <span className="text-xs font-bold uppercase bg-gray-100 px-2 py-1 rounded text-gray-500">{cls.level || 'General'}</span>
                                 </div>
                                 <h3 className="text-2xl font-bold text-gray-800 mb-1">{cls.name}</h3>
-                                <p className="text-sm text-gray-400 font-bold">{cls.formTeacher || 'No Class Teacher'}</p>
+                                <p className="text-sm text-gray-400 font-bold mb-4">{cls.formTeacher || 'No Class Teacher'}</p>
+
+                                <button className="w-full py-2 rounded-lg bg-gray-50 text-schoolGreen font-bold text-xs hover:bg-schoolGreen hover:text-white transition flex items-center justify-center">
+                                    View & Approve Results <ArrowRight size={14} className="ml-2" />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -183,6 +190,7 @@ const AdminResults = () => {
                                 <span className="text-gray-400">2025/2026 Session</span>
                             </div>
                         </div>
+                        <button
                             onClick={handleExport}
                             className="bg-schoolGreen text-white px-6 py-2.5 rounded-xl font-bold text-sm tracking-wide shadow hover:bg-schoolGold transition flex items-center"
                         >
@@ -190,9 +198,9 @@ const AdminResults = () => {
                         </button>
                         <button
                             onClick={async () => {
-                                if(confirm('Are you sure you want to approve all results for this class?')) {
+                                if (confirm('Are you sure you want to approve all results for this class?')) {
                                     const res = await approveClassResults(selectedClass.name, selectedTerm);
-                                    if(res.success) notify.success("Results approved successfully!");
+                                    if (res.success) notify.success("Results approved successfully!");
                                     else notify.error("Failed to approve results.");
                                 }
                             }}
@@ -245,8 +253,8 @@ const AdminResults = () => {
                         </table>
                     </div>
                 </div>
-    )
-}
+            )
+            }
 
         </div >
     );

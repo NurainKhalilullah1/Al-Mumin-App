@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, User, Plus, Save, UserPlus, RefreshCw } from 'lucide-react';
-import { getApplicants, updateApplicantStatus, saveStudent, saveMultipleStudents, getClasses } from '../../utils/db';
+import { getApplicants, updateApplicantStatus, saveStudent, saveMultipleStudents, getClasses, getSchoolFees } from '../../utils/db'; // Added getSchoolFees
 import { useToast } from '../../components/ToastProvider';
 
 const AdminAdmissions = () => {
@@ -8,6 +8,11 @@ const AdminAdmissions = () => {
     const [activeTab, setActiveTab] = useState('applicants');
     const [applicants, setApplicants] = useState([]);
     const [availableClasses, setAvailableClasses] = useState([]);
+
+    // Approval Modal State
+    const [selectedApplicant, setSelectedApplicant] = useState(null);
+    const [admissionFee, setAdmissionFee] = useState(0);
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
 
     // Single Form State
     const [formData, setFormData] = useState({
@@ -37,12 +42,30 @@ const AdminAdmissions = () => {
         }
     };
 
-    const handleStatus = async (id, status) => {
-        const confirmMsg = status === 'Admitted' ? "Admit this student?" : "Reject this application?";
-        if (window.confirm(confirmMsg)) {
-            await updateApplicantStatus(id, status);
+    const initiateAdmission = (applicant) => {
+        const fees = getSchoolFees();
+        const defaultFee = fees[applicant.class_level] || 150000;
+
+        setSelectedApplicant(applicant);
+        setAdmissionFee(defaultFee);
+        setShowApprovalModal(true);
+    };
+
+    const confirmAdmission = async () => {
+        if (!selectedApplicant) return;
+
+        await updateApplicantStatus(selectedApplicant.id, 'Admitted', admissionFee);
+        loadApplicants();
+        notify.success(`Applicant ${selectedApplicant.name} admitted with fee ₦${admissionFee.toLocaleString()}`);
+        setShowApprovalModal(false);
+        setSelectedApplicant(null);
+    };
+
+    const handleReject = async (id) => {
+        if (window.confirm("Reject this application?")) {
+            await updateApplicantStatus(id, 'Rejected');
             loadApplicants();
-            notify.success(`Applicant marked as ${status}`);
+            notify.success(`Applicant marked as Rejected`);
         }
     };
 
@@ -98,7 +121,7 @@ const AdminAdmissions = () => {
     };
 
     return (
-        <div className="animate-in fade-in duration-500">
+        <div className="animate-in fade-in duration-500 relative">
 
             {/* HEADER & TABS */}
             <div className="flex flex-col md:flex-row justify-between items-end mb-8">
@@ -137,17 +160,17 @@ const AdminAdmissions = () => {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-800 text-lg leading-tight">{app.name}</h3>
-                                    <p className="text-xs font-bold text-gray-400 uppercase">{app.class} • Age {app.age}</p>
+                                    <p className="text-xs font-bold text-gray-400 uppercase">{app.class_level} • Age {app.age}</p>
                                 </div>
                             </div>
                             <div className="space-y-2 text-sm text-gray-600 mb-6 bg-gray-50 p-4 rounded-xl">
-                                <p><span className="font-bold text-xs uppercase text-gray-400 mr-2">Parent:</span> {app.parent}</p>
-                                <p><span className="font-bold text-xs uppercase text-gray-400 mr-2">Phone:</span> {app.phone}</p>
+                                <p><span className="font-bold text-xs uppercase text-gray-400 mr-2">Parent:</span> {app.parent_name}</p>
+                                <p><span className="font-bold text-xs uppercase text-gray-400 mr-2">Phone:</span> {app.parent_phone}</p>
                             </div>
                             {app.status === 'Pending' ? (
                                 <div className="flex gap-3">
-                                    <button onClick={() => handleStatus(app.id, 'Admitted')} className="flex-1 bg-schoolGreen text-white py-2 rounded-xl font-bold text-sm hover:bg-schoolGold transition shadow-md">Admit</button>
-                                    <button onClick={() => handleStatus(app.id, 'Rejected')} className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl font-bold text-sm hover:bg-red-100 transition">Reject</button>
+                                    <button onClick={() => initiateAdmission(app)} className="flex-1 bg-schoolGreen text-white py-2 rounded-xl font-bold text-sm hover:bg-schoolGold transition shadow-md">Admit</button>
+                                    <button onClick={() => handleReject(app.id)} className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl font-bold text-sm hover:bg-red-100 transition">Reject</button>
                                 </div>
                             ) : <div className="text-center text-xs text-gray-400 italic font-bold">Processed</div>}
                         </div>
@@ -238,6 +261,51 @@ const AdminAdmissions = () => {
                         <div className="mt-6 flex justify-end">
                             <button onClick={handleBulkSubmit} className="bg-schoolGreen text-white px-8 py-3 rounded-xl font-bold flex items-center shadow-lg hover:bg-schoolGold transition">
                                 <UserPlus size={18} className="mr-2" /> Process Bulk Admission
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- ADMISSION APPROVAL MODAL --- */}
+            {showApprovalModal && selectedApplicant && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Approve Admission</h2>
+                        <p className="text-gray-500 text-sm mb-6">Set the school fee for <strong>{selectedApplicant.name}</strong>.</p>
+
+                        <div className="bg-gray-50 p-4 rounded-xl mb-6 space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Applicant:</span>
+                                <span className="font-bold text-gray-800">{selectedApplicant.name}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Class:</span>
+                                <span className="font-bold text-gray-800">{selectedApplicant.class_level}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Parent:</span>
+                                <span className="font-bold text-gray-800">{selectedApplicant.parent_name}</span>
+                            </div>
+                        </div>
+
+                        <div className="mb-8">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Total School Fee (₦)</label>
+                            <input
+                                type="number"
+                                value={admissionFee}
+                                onChange={(e) => setAdmissionFee(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 font-bold text-lg text-gray-800 focus:ring-2 focus:ring-schoolGreen focus:border-transparent outline-none transition"
+                            />
+                            <p className="text-xs text-gray-400 mt-2">Adjust this amount if the student has a scholarship or discount.</p>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowApprovalModal(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">
+                                Cancel
+                            </button>
+                            <button onClick={confirmAdmission} className="flex-1 py-3 rounded-xl font-bold text-white bg-schoolGreen hover:bg-schoolGold transition shadow-lg">
+                                Confirm Admission
                             </button>
                         </div>
                     </div>

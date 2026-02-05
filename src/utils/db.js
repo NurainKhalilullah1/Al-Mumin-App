@@ -244,6 +244,24 @@ export const getClassResults = async (className, term) => {
   }));
 };
 
+export const checkPendingResults = async () => {
+  const { data, error } = await supabase.from('results').select('id').eq('approval_status', 'Pending').limit(1);
+  return { hasPending: data && data.length > 0 };
+};
+
+export const getClassesWithResultStats = async () => {
+  const classes = await getClasses();
+  // For each class, check if it has pending results
+  // This is N+1 but acceptable for small number of classes (10-20)
+  // Optimization: Fetch all pending results and group by class if possible, 
+  // but results don't store class directly, only student_id. 
+  // So distinct join is needed.
+
+  // Simpler approach: return classes, handle check in UI or separate lighter query
+  return classes;
+
+};
+
 export const getScoresByContext = async (className, subject, term) => {
   // 1. Get class ID
   const { data: cls } = await supabase.from('classes').select('id').eq('name', className).maybeSingle();
@@ -360,12 +378,13 @@ export const saveApplicant = async (appData) => {
   }
 };
 
-export const updateApplicantStatus = async (id, newStatus) => {
+export const updateApplicantStatus = async (id, newStatus, fee = 0) => {
   const { error } = await supabase.from('applicants').update({ status: newStatus }).eq('id', id);
   if (error) console.error(error);
 
   // Fetch applicant details (including created_by)
   const { data: applicant } = await supabase.from('applicants').select('*').eq('id', id).single();
+  if (fee > 0) applicant.fee = fee; // Temporarily attach fee to applicant object for saveStudent
   // Safe check for created_by presence (might be undefined if column missing)
   const createdBy = applicant?.created_by;
 
@@ -377,7 +396,8 @@ export const updateApplicantStatus = async (id, newStatus) => {
       classLevel: applicant.class_level,
       gender: 'M',
       parentName: applicant.parent_name,
-      parentPhone: applicant.parent_phone
+      parentPhone: applicant.parent_phone,
+      assignedFee: applicant.fee // Pass the approved fee
     });
 
     if (newStudent && newStudent.id) {
@@ -612,7 +632,8 @@ export const saveStudent = async (studentData) => {
     last_name: lastName,
     current_class_id: classId,
     gender: gender,
-    parent_phone: studentData.parentPhone || ''
+    parent_phone: studentData.parentPhone || '',
+    assigned_fee: studentData.assignedFee || 0 // Save student specific fee
   };
 
   if (studentData.id) {
@@ -906,13 +927,14 @@ export const verifyPayment = async (paymentId) => {
 };
 
 export const getStudentFeeStatus = async (studentId) => {
-  // 1. Get Student Info for Class Level
-  const { data: student } = await supabase.from('students').select('class_level').eq('id', studentId).single();
+  // 1. Get Student Info for Class Level & Assigned Fee
+  const { data: student } = await supabase.from('students').select('class_level, assigned_fee').eq('id', studentId).single();
   if (!student) return { totalFee: 0, totalPaid: 0, outstanding: 0, status: 'Unknown' };
 
-  // 2. Get Total Fee for Class
+  // 2. Get Total Fee (Use explicit student fee if set, otherwise class default)
   const fees = getSchoolFees();
-  const totalFee = fees[student.class_level] || 150000;
+  const classFee = fees[student.class_level] || 150000;
+  const totalFee = (student.assigned_fee && student.assigned_fee > 0) ? student.assigned_fee : classFee;
 
   // 3. Get Payments
   const { data: payments } = await supabase.from('payments').select('amount, status').eq('student_id', studentId);

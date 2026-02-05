@@ -4,7 +4,7 @@ import {
   FileText, CheckCircle, Upload, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats } from '../../utils/db';
+import { getDashboardStats, checkPendingResults } from '../../utils/db';
 
 const AdminView = () => {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ const AdminView = () => {
     admissions: 0,
     staff: 0
   });
+  const [hasPendingResults, setHasPendingResults] = React.useState(false);
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -25,6 +26,10 @@ const AdminView = () => {
   const fetchStats = async () => {
     const data = await getDashboardStats();
     setStats(data);
+    
+    // Check pending results
+    const pending = await checkPendingResults();
+    if(pending && pending.hasPending) setHasPendingResults(true);
   };
 
   React.useEffect(() => {
@@ -51,6 +56,25 @@ const AdminView = () => {
       </div>
 
       <div className="animate-in fade-in duration-500">
+        
+        {/* PENDING RESULTS ALERT */}
+        {hasPendingResults && (
+            <div onClick={() => navigate('/portal/results')} className="mb-8 bg-orange-50 border border-orange-200 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-100 transition group">
+                <div className="flex items-center text-orange-800">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-white transition">
+                        <FileText className="text-orange-600" size={20} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold">Pending Results require Approval</h3>
+                        <p className="text-sm text-orange-700">Some class results have been uploaded but not yet approved.</p>
+                    </div>
+                </div>
+                <div className="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm group-hover:shadow-md transition">
+                    Review Now
+                </div>
+            </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard title="Total Students" value={stats.students} icon={<Users />} color="bg-blue-600" />
