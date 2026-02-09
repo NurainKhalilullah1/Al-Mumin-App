@@ -127,6 +127,25 @@ const StaffAdmission = () => {
                             </div>
 
                             <div className="border-t border-gray-100 pt-4">
+                                <h3 className="text-sm font-bold text-schoolGreen uppercase tracking-widest mb-4">Academic Info</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {(formData.classLevel.startsWith('SS') || formData.classLevel.includes('Senior')) && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Department</label>
+                                            <select className="p-3 bg-gray-50 border rounded-xl w-full font-bold text-gray-700 outline-none"
+                                                value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })}
+                                            >
+                                                <option value="">Select Department</option>
+                                                <option value="Science">Science</option>
+                                                <option value="Art">Art</option>
+                                                <option value="Commercial">Commercial</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-4">
                                 <h3 className="text-sm font-bold text-schoolGreen uppercase tracking-widest mb-4">Guardian Info</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input type="text" required className="p-3 bg-gray-50 border rounded-xl w-full"

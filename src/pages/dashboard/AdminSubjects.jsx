@@ -157,6 +157,7 @@ const AdminSubjects = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Department</label>
                                     <select value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen">
+                                        <option value="General">General (All Seniors)</option>
                                         <option value="Science">Science</option>
                                         <option value="Arts">Arts</option>
                                         <option value="Commercial">Commercial</option>

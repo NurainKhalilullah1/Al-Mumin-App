@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, CheckCircle, AlertTriangle, ArrowLeft, Download, FileText } from 'lucide-react';
+import { Eye, CheckCircle, AlertTriangle, ArrowLeft, ArrowRight, Download, FileText } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
 import { getClasses, getClassResults, getSubjects, approveClassResults } from '../../utils/db';
 

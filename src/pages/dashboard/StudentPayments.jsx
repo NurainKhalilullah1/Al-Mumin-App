@@ -4,11 +4,7 @@ import { CreditCard, Upload, History, DollarSign, AlertTriangle, CheckCircle, Co
 import { useToast } from '../../components/ToastProvider';
 
 const StudentPayments = () => {
-    // Mock Student ID (In real app, get from auth context)
-    const STUDENT_ID = 'AMS/2024/001';
-    const STUDENT_NAME = 'Abdullahi Musa';
-    const CLASS_LEVEL = 'JSS 2';
-
+    const [user, setUser] = useState(null);
     const [feeStatus, setFeeStatus] = useState(null);
     const [bankDetails, setBankDetails] = useState({});
     const [history, setHistory] = useState([]);
@@ -17,14 +13,24 @@ const StudentPayments = () => {
     const { addToast } = useToast();
 
     useEffect(() => {
-        loadData();
+        const userStr = localStorage.getItem('currentUser');
+        if (userStr) {
+            const u = JSON.parse(userStr);
+            setUser(u);
+            loadData(u);
+        }
     }, []);
 
-    const loadData = () => {
-        setFeeStatus(getStudentFeeStatus(STUDENT_ID));
-        setBankDetails(getAdminBankDetails());
-        const allPayments = getPayments();
-        setHistory(allPayments.filter(p => p.studentId === STUDENT_ID));
+    const loadData = async (currentUser) => {
+        if (!currentUser) return;
+        const status = await getStudentFeeStatus(currentUser.id);
+        setFeeStatus(status);
+
+        const bank = await getAdminBankDetails();
+        setBankDetails(bank);
+
+        const allPayments = await getPayments();
+        setHistory(allPayments.filter(p => p.studentId === currentUser.id));
     };
 
     const [showSuccess, setShowSuccess] = useState(false);
@@ -34,9 +40,9 @@ const StudentPayments = () => {
         if (!amount || amount <= 0) return;
 
         const paymentData = {
-            studentId: STUDENT_ID,
-            studentName: STUDENT_NAME,
-            classLevel: CLASS_LEVEL,
+            studentId: user.id,
+            studentName: user.name,
+            classLevel: user.classLevel || 'N/A',
             amount: amount,
             method: 'Transfer',
             receiptRef: `REF-${Date.now().toString().slice(-6)}` // Mock Receipt

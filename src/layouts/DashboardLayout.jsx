@@ -5,7 +5,7 @@ import {
   Menu, Bell, Search, GraduationCap, BookOpen,
   Calendar, UserPlus, CheckSquare, X
 } from 'lucide-react';
-import { getClasses, getStudents, getStaff } from '../utils/db';
+import { getClasses, getStudents, getStaff, getAssignments, getLessonNotes } from '../utils/db'; // Added new imports
 import { useToast } from '../components/ToastProvider';
 
 const DashboardLayout = () => {
@@ -25,7 +25,7 @@ const DashboardLayout = () => {
   const menus = {
     admin: [
       { name: 'Cockpit', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },
-      { name: 'Payments', icon: <CheckSquare size={20} />, path: '/portal/admin-payments' }, // <--- NEW Payment Link
+      { name: 'Payments', icon: <CheckSquare size={20} />, path: '/portal/admin-payments' },
       { name: 'Notices', icon: <Bell size={20} />, path: '/portal/admin-notices' },
       { name: 'Admissions', icon: <UserPlus size={20} />, path: '/portal/admissions' },
       { name: 'Staff', icon: <Users size={20} />, path: '/portal/staff' },
@@ -48,18 +48,19 @@ const DashboardLayout = () => {
     ],
     student: [
       { name: 'My Portal', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },
-      { name: 'Payments', icon: <CheckSquare size={20} />, path: '/portal/student-payments' }, // <--- NEW Payment Link
+      { name: 'Payments', icon: <CheckSquare size={20} />, path: '/portal/student-payments' },
       { name: 'Notice Board', icon: <Bell size={20} />, path: '/portal/noticeboard' },
       { name: 'Check Result', icon: <FileText size={20} />, path: '/portal/result-sheet' },
       { name: 'Timetable', icon: <Calendar size={20} />, path: '/portal/timetable' },
       { name: 'Assignments', icon: <BookOpen size={20} />, path: '/portal/assignments' },
+      { name: 'Lesson Notes', icon: <FileText size={20} />, path: '/portal/lesson-notes' },
     ]
   };
 
   const currentMenu = menus[userRole] || menus.student;
 
   // --- DYNAMIC USER DATA ---
-  const [displayUser, setDisplayUser] = React.useState({
+  const [displayUser, setDisplayUser] = useState({
     title: 'Loading...',
     sub: '...',
     badge: 'U',
@@ -72,9 +73,6 @@ const DashboardLayout = () => {
 
       if (userRole === 'admin') {
         // Fetch latest profile or use defaults
-        // We can import getAdminProfile here, but for now let's use a simpler approach 
-        // since we can't easily import db.js inside this layout without checking circular deps or just importing it.
-        // Let's assume we can import it.
         const { getAdminProfile } = await import('../utils/db');
         const profile = await getAdminProfile();
         setDisplayUser({
@@ -119,25 +117,41 @@ const DashboardLayout = () => {
       setSearching(true);
       const query = searchQuery.toLowerCase();
 
+      // 1. Pages
       const menuResults = currentMenu.filter(m => m.name.toLowerCase().includes(query)).map(m => ({ type: 'Page', ...m }));
 
       try {
-        const [classes, students, staff] = await Promise.all([
+        const [classes, students, staff, assignments, notes] = await Promise.all([
           getClasses(),
           getStudents(),
-          getStaff()
+          getStaff(),
+          getAssignments(), // Fetch Assignments
+          getLessonNotes()  // Fetch Lesson Notes
         ]);
 
+        // 2. Classes
         const classResults = classes.filter(c => c.name.toLowerCase().includes(query)).map(c => ({ type: 'Class', name: c.name, id: c.id }));
+
+        // 3. Students
         const studentResults = students.filter(s => s.name.toLowerCase().includes(query)).map(s => ({ type: 'Student', name: s.name, detail: s.classLevel || s.class, id: s.id }));
+
+        // 4. Staff
         const staffResults = staff.filter(s => s.name.toLowerCase().includes(query)).map(s => ({ type: 'Staff', name: s.name, detail: s.role, id: s.id }));
+
+        // 5. Assignments
+        const assignmentResults = (assignments || []).filter(a => a.title.toLowerCase().includes(query)).map(a => ({ type: 'Assignment', name: a.title, detail: `${a.subject} (${a.classLevel})`, id: a.id }));
+
+        // 6. Lesson Notes
+        const noteResults = (notes || []).filter(n => n.topic.toLowerCase().includes(query)).map(n => ({ type: 'Lesson Note', name: n.topic, detail: `Week ${n.week}`, id: n.id }));
 
         setSearchResults([
           ...menuResults,
           ...classResults,
           ...studentResults,
-          ...staffResults
-        ].slice(0, 8));
+          ...staffResults,
+          ...assignmentResults,
+          ...noteResults
+        ].slice(0, 10)); // Increased limit
       } catch (err) {
         console.error(err);
       } finally {
@@ -168,6 +182,10 @@ const DashboardLayout = () => {
       }
     } else if (result.type === 'Staff') {
       navigate('/portal/staff');
+    } else if (result.type === 'Assignment') {
+      navigate('/portal/assignments');
+    } else if (result.type === 'Lesson Note') {
+      navigate('/portal/lesson-notes');
     }
   };
 

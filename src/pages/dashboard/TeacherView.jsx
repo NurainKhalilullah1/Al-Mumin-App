@@ -1,54 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, BookOpen, FileText, CheckSquare,
   Plus, Upload, Clock, Calendar, Bell, ChevronRight, GraduationCap
 } from 'lucide-react';
-import { getNotices, getNotifications } from '../../utils/db'; // Added getNotifications
+import { getNotices, getNotifications, getStaffStats, getStaffActivities } from '../../utils/db';
 
 const TeacherView = () => {
   const navigate = useNavigate();
-  const [latestNotices, setLatestNotices] = React.useState([]);
-  const [notifications, setNotifications] = React.useState([]);
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState({ classes: 0, pendingScores: 0 });
+  const [latestNotices, setLatestNotices] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
+      // 0. Get User
+      const userStr = localStorage.getItem('currentUser');
+      let currentUser = null;
+      if (userStr) {
+        currentUser = JSON.parse(userStr);
+        setUser(currentUser);
+      }
+
       // 1. Notices
       const notices = await getNotices();
       const all = notices.filter(n => n.active && (n.audience === 'Staff' || n.audience === 'All' || n.audience === 'Public'));
       setLatestNotices(all.slice(-3).reverse());
 
-      // 2. Notifications (Personal)
-      const userStr = localStorage.getItem('currentUser');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        const notifs = await getNotifications(user.id);
-        setNotifications(notifs.slice(0, 5)); // Show recent 5
+      if (currentUser) {
+        // 2. Personal Notifications
+        const notifs = await getNotifications(currentUser.id);
+        setNotifications(notifs.slice(0, 5));
+
+        // 3. Staff Stats
+        const myStats = await getStaffStats(currentUser.name);
+        setStats(myStats);
+
+        // 4. Recent Activities
+        const myActivities = await getStaffActivities(currentUser.email);
+        setRecentActivities(myActivities);
       }
     };
     fetchData();
   }, []);
 
-  // Mock Data
-  const schedule = [
-    { time: '08:00 AM', class: 'JSS 2', subject: 'Mathematics', type: 'Class', color: 'bg-blue-100 text-blue-700' },
-    { time: '10:00 AM', class: 'SS 1', subject: 'Physics', type: 'Lab', color: 'bg-purple-100 text-purple-700' },
-    { time: '02:00 PM', class: 'JSS 3', subject: 'Mathematics', type: 'Class', color: 'bg-orange-100 text-orange-700' },
-  ];
-
-  const recentActivities = [
-    { text: 'Week 5 Lesson Note was approved', time: '2 hours ago', icon: <CheckSquare size={14} className="text-white" />, bg: 'bg-green-500 shadow-green-200' },
-    { text: 'Aminat (JSS 2) submitted Assignment', time: '4 hours ago', icon: <FileText size={14} className="text-white" />, bg: 'bg-blue-500 shadow-blue-200' },
-  ];
+  // Valid Fallback Schedule (since we don't have a full timetable DB yet)
+  const schedule = [];
 
   return (
     <div className="animate-in fade-in duration-500 relative">
 
-      {/* HEADER gREETING */}
+      {/* HEADER GREETING */}
       <div className="flex flex-col md:flex-row justify-between items-end mb-10 relative z-10">
         <div>
           <h1 className="text-4xl font-serif font-bold text-schoolGreen mb-2">Teacher's Desk</h1>
-          <p className="text-gray-500 text-lg">Good Morning, <span className="font-bold text-gray-800">Mr. Ibrahim</span>.</p>
+          <p className="text-gray-500 text-lg">Good Morning, <span className="font-bold text-gray-800">{user?.name || 'Staff Member'}</span>.</p>
         </div>
         <div className="flex gap-3 mt-4 md:mt-0">
           <button className="bg-white/50 backdrop-blur border border-white text-gray-600 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-white transition shadow-sm">
@@ -69,7 +77,7 @@ const TeacherView = () => {
           icon={<GraduationCap size={24} />}
           color="bg-gradient-to-br from-blue-500 to-blue-600"
           label="My Classes"
-          value="View All"
+          value={stats.classes + " Classes"}
           sub="Class Directory"
           onClick={() => navigate('/portal/staff-classes')}
         />
@@ -77,7 +85,7 @@ const TeacherView = () => {
           icon={<CheckSquare size={24} />}
           color="bg-gradient-to-br from-orange-500 to-orange-600"
           label="Pending Scores"
-          value="2 Classes"
+          value={stats.pendingScores + " Pending"}
           sub="Input Scores"
           onClick={() => navigate('/portal/scores')}
         />
@@ -94,7 +102,7 @@ const TeacherView = () => {
           color="bg-gradient-to-br from-green-500 to-green-600"
           label="Lesson Notes"
           value="Upload"
-          sub="Week 6 Due"
+          sub="Weekly Plan"
           onClick={() => navigate('/portal/lesson-notes')}
         />
       </div>
@@ -148,22 +156,20 @@ const TeacherView = () => {
               </span>
             </div>
             <div className="space-y-4">
-              {schedule.map((item, idx) => (
-                <div key={idx} className="flex items-center p-4 rounded-2xl hover:bg-white transition border border-transparent hover:border-gray-100 hover:shadow-lg group">
-                  <div className="w-20 text-center">
-                    <span className="block font-bold text-gray-800 text-sm group-hover:text-schoolGreen transition">{item.time}</span>
-                  </div>
-                  <div className="h-12 w-1 bg-gray-100 mx-6 rounded-full group-hover:bg-schoolGold transition"></div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-gray-800 text-lg">{item.subject}</h4>
-                    <div className="flex gap-2 mt-1">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${item.color}`}>{item.type}</span>
-                      <span className="text-xs text-gray-400">{item.class}</span>
-                    </div>
-                  </div>
-                  <button className="text-gray-300 hover:text-schoolGreen p-2"><ChevronRight /></button>
+              {schedule.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-sm">No classes scheduled for today.</p>
                 </div>
-              ))}
+              ) : (
+                schedule.map((item, idx) => (
+                  <div key={idx} className="flex items-center p-4 rounded-2xl hover:bg-white transition border border-transparent hover:border-gray-100 hover:shadow-lg group">
+                    <div className="w-20 text-center">
+                      <span className="block font-bold text-gray-800 text-sm group-hover:text-schoolGreen transition">{item.time}</span>
+                    </div>
+                    {/* ... render schedule item */}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -180,8 +186,21 @@ const TeacherView = () => {
               {/* Line Connector */}
               <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-gray-100"></div>
 
-              {latestNotices.map((act, idx) => (
+              {/* Real Activities */}
+              {recentActivities.map((act, idx) => (
                 <div key={idx} className="flex gap-4 relative z-10">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg text-white ${act.type === 'approval' ? 'bg-green-500 shadow-green-200' : 'bg-blue-500 shadow-blue-200'}`}>
+                    {act.type === 'approval' ? <CheckSquare size={14} /> : <FileText size={14} />}
+                  </div>
+                  <div className="pt-1">
+                    <p className="text-sm text-gray-700 font-bold leading-snug mb-1">{act.text}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{act.time}</p>
+                  </div>
+                </div>
+              ))}
+
+              {latestNotices.map((act, idx) => (
+                <div key={`notice-${idx}`} className="flex gap-4 relative z-10">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg text-white bg-orange-500 shadow-orange-200`}>
                     <Bell size={14} />
                   </div>
@@ -191,8 +210,9 @@ const TeacherView = () => {
                   </div>
                 </div>
               ))}
+
               {notifications.map((notif, idx) => (
-                <div key={idx} className="flex gap-4 relative z-10">
+                <div key={`notif-${idx}`} className="flex gap-4 relative z-10">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg text-white bg-blue-500 shadow-blue-200`}>
                     <CheckSquare size={14} />
                   </div>

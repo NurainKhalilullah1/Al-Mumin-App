@@ -4,7 +4,7 @@ import {
   FileText, CheckCircle, Upload, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, checkPendingResults } from '../../utils/db';
+import { getDashboardStats, checkPendingResults, getRecentActivities } from '../../utils/db';
 
 const AdminView = () => {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ const AdminView = () => {
     staff: 0
   });
   const [hasPendingResults, setHasPendingResults] = React.useState(false);
+  const [activities, setActivities] = React.useState([]);
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -26,10 +27,14 @@ const AdminView = () => {
   const fetchStats = async () => {
     const data = await getDashboardStats();
     setStats(data);
-    
+
     // Check pending results
     const pending = await checkPendingResults();
-    if(pending && pending.hasPending) setHasPendingResults(true);
+    if (pending && pending.hasPending) setHasPendingResults(true);
+
+    // Fetch Activities
+    const acts = await getRecentActivities();
+    setActivities(acts || []);
   };
 
   React.useEffect(() => {
@@ -56,23 +61,23 @@ const AdminView = () => {
       </div>
 
       <div className="animate-in fade-in duration-500">
-        
+
         {/* PENDING RESULTS ALERT */}
         {hasPendingResults && (
-            <div onClick={() => navigate('/portal/results')} className="mb-8 bg-orange-50 border border-orange-200 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-100 transition group">
-                <div className="flex items-center text-orange-800">
-                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-white transition">
-                        <FileText className="text-orange-600" size={20} />
-                    </div>
-                    <div>
-                        <h3 className="font-bold">Pending Results require Approval</h3>
-                        <p className="text-sm text-orange-700">Some class results have been uploaded but not yet approved.</p>
-                    </div>
-                </div>
-                <div className="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm group-hover:shadow-md transition">
-                    Review Now
-                </div>
+          <div onClick={() => navigate('/portal/results')} className="mb-8 bg-orange-50 border border-orange-200 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-100 transition group">
+            <div className="flex items-center text-orange-800">
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-white transition">
+                <FileText className="text-orange-600" size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold">Pending Results require Approval</h3>
+                <p className="text-sm text-orange-700">Some class results have been uploaded but not yet approved.</p>
+              </div>
             </div>
+            <div className="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-sm shadow-sm group-hover:shadow-md transition">
+              Review Now
+            </div>
+          </div>
         )}
 
         {/* Stats Grid */}
@@ -88,27 +93,26 @@ const AdminView = () => {
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-gray-800">Live Activity Feed</h3>
-              <button className="text-sm text-schoolGreen font-bold hover:underline">View All</button>
+              <button className="text-sm text-schoolGreen font-bold hover:underline" onClick={fetchStats}>Refresh</button>
             </div>
             <div className="space-y-6">
-              <ActivityItem
-                icon={<FileText />}
-                title="Lesson Note Submitted"
-                desc="Mrs. Adebayo submitted JSS2 English Lesson Note for approval."
-                time="10 mins ago"
-              />
-              <ActivityItem
-                icon={<CreditCard />}
-                title="Fee Payment Verified"
-                desc="Bursar confirmed payment for 15 students via Bank Transfer."
-                time="32 mins ago"
-              />
-              <ActivityItem
-                icon={<Upload />}
-                title="Result Uploaded"
-                desc="Mr. Okon uploaded SS1 Physics CA Scores."
-                time="1 hour ago"
-              />
+              {activities.length === 0 ? (
+                <p className="text-gray-400 text-sm">No recent activities.</p>
+              ) : (
+                activities.map((act, idx) => (
+                  <ActivityItem
+                    key={idx}
+                    icon={
+                      act.type === 'admission' ? <Users /> :
+                        act.type === 'payment' ? <CreditCard /> :
+                          act.type === 'result' ? <Upload /> : <FileText />
+                    }
+                    title={act.title}
+                    desc={act.desc}
+                    time={new Date(act.time).toLocaleDateString()}
+                  />
+                ))
+              )}
             </div>
           </div>
 

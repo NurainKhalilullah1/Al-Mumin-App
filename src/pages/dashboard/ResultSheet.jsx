@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentResults } from '../../utils/db';
+import { getStudentResults, getStudentAttendanceStats } from '../../utils/db';
 
 const ResultSheet = () => {
   const navigate = useNavigate();
   const [academicRecords, setAcademicRecords] = useState([]);
   const [source, setSource] = useState('loading');
+  const [source, setSource] = useState('loading');
   const [studentProfile, setStudentProfile] = useState(null);
+  const [attendanceStats, setAttendanceStats] = useState({ total: 0, present: 0 });
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -30,6 +32,8 @@ const ResultSheet = () => {
 
       // 2. Fetch Real Data
       const realData = await getStudentResults(user.id);
+      const attStats = await getStudentAttendanceStats(user.id);
+      setAttendanceStats(attStats);
 
       if (realData && realData.length > 0) {
         // Calculate Average if real data exists
@@ -203,8 +207,8 @@ const ResultSheet = () => {
               <h3 className="font-bold text-schoolGreen uppercase text-[10px] mb-1 border-b border-gray-300">Attendance</h3>
               <div className="border border-gray-300 p-2 rounded bg-gray-50 text-center print:bg-transparent">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><span className="block text-xl font-bold text-gray-800">112</span><span className="text-[10px] uppercase text-gray-500">Opened</span></div>
-                  <div><span className="block text-xl font-bold text-schoolGreen">110</span><span className="text-[10px] uppercase text-gray-500">Present</span></div>
+                  <div><span className="block text-xl font-bold text-gray-800">{attendanceStats.total || '-'}</span><span className="text-[10px] uppercase text-gray-500">Opened</span></div>
+                  <div><span className="block text-xl font-bold text-schoolGreen">{attendanceStats.present || '-'}</span><span className="text-[10px] uppercase text-gray-500">Present</span></div>
                 </div>
               </div>
             </div>

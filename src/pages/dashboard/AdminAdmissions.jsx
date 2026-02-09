@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, User, Plus, Save, UserPlus, RefreshCw } from 'lucide-react';
+import { Check, X, User, Plus, Save, UserPlus, RefreshCw, CheckSquare } from 'lucide-react';
 import { getApplicants, updateApplicantStatus, saveStudent, saveMultipleStudents, getClasses, getSchoolFees } from '../../utils/db'; // Added getSchoolFees
 import { useToast } from '../../components/ToastProvider';
 
@@ -12,11 +12,12 @@ const AdminAdmissions = () => {
     // Approval Modal State
     const [selectedApplicant, setSelectedApplicant] = useState(null);
     const [admissionFee, setAdmissionFee] = useState(0);
+    const [selectedDepartment, setSelectedDepartment] = useState(''); // New State
     const [showApprovalModal, setShowApprovalModal] = useState(false);
 
     // Single Form State
     const [formData, setFormData] = useState({
-        name: '', gender: 'M', classLevel: '', parentName: '', phone: ''
+        name: '', gender: 'M', classLevel: '', parentName: '', phone: '', department: ''
     });
 
     // Bulk Form State
@@ -29,10 +30,22 @@ const AdminAdmissions = () => {
         loadClasses();
     }, []);
 
+    const [showHistory, setShowHistory] = useState(false); // New State
+
     const loadApplicants = async () => {
         const data = await getApplicants();
-        setApplicants(data);
+        // Default: Show only Pending. If showHistory is true, show all.
+        if (showHistory) {
+            setApplicants(data);
+        } else {
+            setApplicants(data.filter(app => app.status === 'Pending'));
+        }
     };
+
+    // Re-load when filter changes
+    useEffect(() => {
+        loadApplicants();
+    }, [showHistory]);
 
     const loadClasses = async () => {
         const cls = await getClasses();
@@ -48,15 +61,33 @@ const AdminAdmissions = () => {
 
         setSelectedApplicant(applicant);
         setAdmissionFee(defaultFee);
+        // Default department if available in applicant (future proof) or empty
+        setSelectedDepartment('');
         setShowApprovalModal(true);
     };
 
     const confirmAdmission = async () => {
         if (!selectedApplicant) return;
 
-        await updateApplicantStatus(selectedApplicant.id, 'Admitted', admissionFee);
+        // Pass department in a way updateApplicantStatus/saveStudent can handle
+        // We'll leverage the 'fee' hack or update updateApplicantStatus signature?
+        // updateApplicantStatus takes (id, status, fee). 
+        // We need to pass department too. 
+        // Best way: Update updateApplicantStatus to accept an options object or extra arg.
+        // OR better: Just call saveStudent directly here? No, updateApplicantStatus handles notification/status update.
+        // Let's modify updateApplicantStatus in db.js to accept extra data? 
+        // OR: Update applicant record with department FIRST, then approve.
+
+        // Strategy: We will temporarily specificy Department in the function call by modifying db.js later OR:
+        // Current db.js: updateApplicantStatus calls saveStudent with applicant details.
+        // It reads applicant from DB. So we must UPDATE applicant in DB with department first if we want it to persist?
+        // Or simply pass the overrides to updateApplicantStatus.
+
+        // Let's update updateApplicantStatus signature in next step. For now, pass it as 4th arg.
+        await updateApplicantStatus(selectedApplicant.id, 'Admitted', admissionFee, selectedDepartment);
+
         loadApplicants();
-        notify.success(`Applicant ${selectedApplicant.name} admitted with fee ₦${admissionFee.toLocaleString()}`);
+        notify.success(`Applicant ${selectedApplicant.name} admitted to ${selectedApplicant.class_level} ${selectedDepartment ? '(' + selectedDepartment + ')' : ''}`);
         setShowApprovalModal(false);
         setSelectedApplicant(null);
     };
@@ -129,9 +160,14 @@ const AdminAdmissions = () => {
                     <h1 className="text-3xl font-serif font-bold text-schoolGreen">Admissions Portal</h1>
                     <p className="text-gray-500 mt-1">Manage applications or directly register new students.</p>
                 </div>
-                <button onClick={loadApplicants} className="mb-4 md:mb-0 bg-white text-gray-500 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm self-end" title="Refresh Applicants">
-                    <RefreshCw size={20} />
-                </button>
+                <div className="flex gap-2 self-end mb-4 md:mb-0">
+                    <button onClick={() => setShowHistory(!showHistory)} className={`p-2.5 rounded-xl border transition shadow-sm ${showHistory ? 'bg-schoolGreen text-white border-schoolGreen' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`} title={showHistory ? "Hide Processed" : "Show History"}>
+                        <CheckSquare size={20} />
+                    </button>
+                    <button onClick={loadApplicants} className="bg-white text-gray-500 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm" title="Refresh Applicants">
+                        <RefreshCw size={20} />
+                    </button>
+                </div>
 
                 <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 mt-4 md:mt-0 flex">
                     <button onClick={() => setActiveTab('applicants')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'applicants' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}>
@@ -198,6 +234,14 @@ const AdminAdmissions = () => {
                             <select className="p-3 bg-gray-50 border rounded-xl w-full" value={formData.classLevel} onChange={e => setFormData({ ...formData, classLevel: e.target.value })}>
                                 {availableClasses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                             </select>
+                            {(formData.classLevel.startsWith('SS') || formData.classLevel.includes('Senior')) && (
+                                <select className="p-3 bg-gray-50 border rounded-xl w-full" value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })}>
+                                    <option value="">Select Department</option>
+                                    <option value="Science">Science</option>
+                                    <option value="Art">Art</option>
+                                    <option value="Commercial">Commercial</option>
+                                </select>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <input type="text" required className="p-3 bg-gray-50 border rounded-xl w-full" placeholder="Parent Name" value={formData.parentName} onChange={e => setFormData({ ...formData, parentName: e.target.value })} />
                                 <input type="text" required className="p-3 bg-gray-50 border rounded-xl w-full" placeholder="Parent Phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
@@ -288,6 +332,22 @@ const AdminAdmissions = () => {
                                 <span className="font-bold text-gray-800">{selectedApplicant.parent_name}</span>
                             </div>
                         </div>
+
+                        {(selectedApplicant.class_level.startsWith('SS') || selectedApplicant.class_level.includes('Senior')) && (
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Department</label>
+                                <select
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-schoolGreen"
+                                    value={selectedDepartment}
+                                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                                >
+                                    <option value="">Select Department</option>
+                                    <option value="Science">Science</option>
+                                    <option value="Art">Art</option>
+                                    <option value="Commercial">Commercial</option>
+                                </select>
+                            </div>
+                        )}
 
                         <div className="mb-8">
                             <label className="block text-sm font-bold text-gray-700 mb-2">Total School Fee (₦)</label>

@@ -106,16 +106,33 @@ const ScoreSheet = () => {
   };
 
   const handleSaveAll = () => {
+    // Determine Role for Approval Status
+    const userStr = localStorage.getItem('currentUser');
+    let isStaff = true;
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      // Simple check: active staff might be "admin" too, but usually explicit role check is better.
+      // Here we rely on the component usage.
+      // However, we can check localStorage 'userRole' which DashboardHome uses.
+    }
+    const role = localStorage.getItem('userRole');
+    const approvalStatus = role === 'admin' ? 'Approved' : 'Pending';
+
     students.forEach(student => {
       const data = inputs[student.id];
       if (data) {
         saveScore(
           student.id, activeTerm, activeSubject,
-          data.test1, data.test2, data.midTerm, data.exam
+          data.test1, data.test2, data.midTerm, data.exam,
+          approvalStatus // Pass calculated status
         );
       }
     });
-    alert(`Saved ${activeSubject} scores for ${activeClass}`);
+    const msg = role === 'admin' ?
+      `Saved & Approved ${activeSubject} scores for ${activeClass}` :
+      `Saved ${activeSubject} scores for ${activeClass} (Pending Approval)`;
+
+    alert(msg);
   };
 
   return (
@@ -182,26 +199,54 @@ const ScoreSheet = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {students.length === 0 ? (
-              <tr><td colSpan="6" className="p-8 text-center text-gray-400 font-bold">No students found in {activeClass}.</td></tr>
-            ) : students.map((student) => {
-              const sData = inputs[student.id] || {};
-              const total = (parseInt(sData.test1) || 0) + (parseInt(sData.test2) || 0) + (parseInt(sData.midTerm) || 0) + (parseInt(sData.exam) || 0);
+            {students
+              .filter(student => {
+                // Filter students based on Subject Department
+                const subjectObj = allSubjects.find(s => s.name === activeSubject);
+                if (!subjectObj) return true; // Safety
 
-              return (
-                <tr key={student.id} className="hover:bg-gray-50 transition group">
-                  <td className="p-4 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100">
-                    <p className="font-bold text-gray-800 text-sm">{student.name}</p>
-                    <p className="text-xs text-gray-400">{student.id}</p>
-                  </td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test1 || ''} onChange={(e) => handleInputChange(student.id, 'test1', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test2 || ''} onChange={(e) => handleInputChange(student.id, 'test2', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-blue-50/30" placeholder="-" value={sData.midTerm || ''} onChange={(e) => handleInputChange(student.id, 'midTerm', e.target.value)} /></td>
-                  <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-yellow-50/30" placeholder="-" value={sData.exam || ''} onChange={(e) => handleInputChange(student.id, 'exam', e.target.value)} /></td>
-                  <td className="p-4 text-center"><span className={`font-bold block py-1 px-3 rounded-lg ${total >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{total}</span></td>
-                </tr>
-              );
-            })}
+                // Junior Logic
+                if (activeClass.startsWith('JSS')) return true; // All juniors take all subjects usually
+
+                // Senior Logic
+                if (subjectObj.department === 'General') return true; // Everyone takes General (Math/Eng)
+
+                // Specific Department (e.g. Physics -> Science)
+                // If student has no department, maybe show them to be safe (or hide? Safe to show)
+                if (!student.department) return true;
+
+                return student.department === subjectObj.department;
+              })
+              .length === 0 ? (
+              <tr><td colSpan="6" className="p-8 text-center text-gray-400 font-bold">No eligible students found in {activeClass} for {activeSubject}.</td></tr>
+            ) : students
+              .filter(student => {
+                // REPEAT FILTER for Map (Optimization: Move filter up to state or variable)
+                const subjectObj = allSubjects.find(s => s.name === activeSubject);
+                if (!subjectObj) return true;
+                if (activeClass.startsWith('JSS')) return true;
+                if (subjectObj.department === 'General') return true;
+                if (!student.department) return true;
+                return student.department === subjectObj.department;
+              })
+              .map((student) => {
+                const sData = inputs[student.id] || {};
+                const total = (parseInt(sData.test1) || 0) + (parseInt(sData.test2) || 0) + (parseInt(sData.midTerm) || 0) + (parseInt(sData.exam) || 0);
+
+                return (
+                  <tr key={student.id} className="hover:bg-gray-50 transition group">
+                    <td className="p-4 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100">
+                      <p className="font-bold text-gray-800 text-sm">{student.name}</p>
+                      <p className="text-xs text-gray-400">{student.id}</p>
+                    </td>
+                    <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test1 || ''} onChange={(e) => handleInputChange(student.id, 'test1', e.target.value)} /></td>
+                    <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen" placeholder="-" value={sData.test2 || ''} onChange={(e) => handleInputChange(student.id, 'test2', e.target.value)} /></td>
+                    <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-blue-50/30" placeholder="-" value={sData.midTerm || ''} onChange={(e) => handleInputChange(student.id, 'midTerm', e.target.value)} /></td>
+                    <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-yellow-50/30" placeholder="-" value={sData.exam || ''} onChange={(e) => handleInputChange(student.id, 'exam', e.target.value)} /></td>
+                    <td className="p-4 text-center"><span className={`font-bold block py-1 px-3 rounded-lg ${total >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{total}</span></td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>

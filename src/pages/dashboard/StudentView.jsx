@@ -4,7 +4,7 @@ import {
   BookOpen, Calendar, Download,
   FileText, CheckCircle, Award
 } from 'lucide-react';
-import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats } from '../../utils/db'; // <--- IMPORT DB
+import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats, getStudentFeeStatus } from '../../utils/db'; // <--- IMPORT DB
 
 const StudentView = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -18,7 +18,11 @@ const StudentView = () => {
 
   useEffect(() => {
     // 1. Fetch Assignments
-    setAssignmentList(getAssignments());
+    const fetchTasks = async () => {
+      const tasks = await getAssignments();
+      setAssignmentList(tasks);
+    };
+    fetchTasks();
 
     // 2. Fetch Stats
     // setStats(getStudentStats("AMS/2024/005")); // OLD MOCK
@@ -28,11 +32,17 @@ const StudentView = () => {
       if (userStr) {
         const user = JSON.parse(userStr);
         // Fetch real attendance
-        const attStats = await getStudentAttendanceStats(user.id); // Assuming user.id is student ID
+        const attStats = await getStudentAttendanceStats(user.id);
+
+        // Fetch real fee status
+        const feeStats = await getStudentFeeStatus(user.id);
+
         setStats(prev => ({
-          ...prev, // Keep mock fees/behavior for now unless I have real sources
-          feesPaid: true, // Mock
-          behavior: 'Excellent', // Mock
+          ...prev,
+          feesPaid: feeStats.status === 'Fully Paid',
+          outstanding: feeStats.outstanding,
+          behavior: 'Excellent', // Keep mock until Behavior module exists
+          behaviorRemark: 'Keep it up!',
           attendance: attStats.percentage,
           presentCount: attStats.present,
           absentCount: attStats.absent,
@@ -43,7 +53,11 @@ const StudentView = () => {
     fetchRealStats();
 
     // 3. Fetch Timetable
-    setTodaysClasses(getTodaysClasses());
+    const fetchTimetable = async () => {
+      const classes = await getTodaysClasses();
+      setTodaysClasses(classes);
+    };
+    fetchTimetable();
 
     // 4. Fetch Latest Notice
     const fetchNotices = async () => {
