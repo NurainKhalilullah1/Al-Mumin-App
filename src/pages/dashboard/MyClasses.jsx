@@ -73,7 +73,7 @@ const MyClasses = () => {
     <div className="animate-in fade-in duration-500">
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold text-schoolGreen">My Class Manager</h1>
           <div className="flex items-center gap-2 mt-2">
@@ -138,7 +138,7 @@ const MyClasses = () => {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
           {/* TOOLBAR */}
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-50 gap-4 md:gap-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2">
                 <Calendar size={16} className="text-gray-400 mr-2" />

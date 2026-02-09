@@ -71,7 +71,7 @@ const TeacherView = () => {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-10 relative z-10 gap-4">
         <div className="w-full lg:w-auto text-left">
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-schoolGreen mb-2">Teacher's Desk</h1>
-          <p className="text-gray-500 text-base md:text-lg">Good Morning, <span className="font-bold text-gray-800">{user?.name || 'Staff Member'}</span>.</p>
+          <p className="text-gray-500 text-base md:text-lg">{greeting}, <span className="font-bold text-gray-800">{user?.name || 'Staff Member'}</span>.</p>
         </div>
         <div className="w-full lg:w-auto grid grid-cols-2 lg:flex gap-3">
           <button className="bg-white/50 backdrop-blur border border-white text-gray-600 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-white transition shadow-sm w-full lg:w-auto">

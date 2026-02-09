@@ -50,9 +50,9 @@ const AdminView = () => {
   return (
     <div>
       {/* --- WELCOME HEADER --- */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Principal's Cockpit</h1>
+          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Principal's Workspace</h1>
           <p className="text-gray-500 mt-1">{getTimeGreeting()}, Principal.</p>
         </div>
         <button onClick={fetchStats} className="bg-white text-gray-500 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 hover:text-schoolGreen transition shadow-sm flex items-center gap-2 font-bold text-sm" title="Refresh Data">

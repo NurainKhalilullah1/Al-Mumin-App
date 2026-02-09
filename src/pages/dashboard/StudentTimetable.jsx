@@ -34,7 +34,9 @@ const StudentTimetable = () => {
                 setStudentClass(className);
 
                 if (classId) {
-                    const data = await getClassTimetable(classId);
+                    // database usually uses 'class_level' (string) not 'class_id' (int) in this schema
+                    // So we pass className ("JSS 1") instead of classId (6)
+                    const data = await getClassTimetable(className);
 
                     // Transform flat DB rows to Grouped Object
                     const grouped = {

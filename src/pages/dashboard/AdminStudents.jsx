@@ -83,6 +83,7 @@ const AdminStudents = () => {
             classLevel: selectedClass ? selectedClass.name : student.classLevel,
             classLevel: selectedClass ? selectedClass.name : student.classLevel,
             parentPhone: student.parent_phone || '',
+            department: student.department || '', // Load existing department
             assignedFee: student.assigned_fee || 0
         });
         setShowModal(true);
@@ -161,7 +162,7 @@ const AdminStudents = () => {
             {/* VIEW MODE: STUDENTS LIST (TABLE) */}
             {viewMode === 'students' && selectedClass && (
                 <>
-                    <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8">
                         <div>
                             <button onClick={handleBackToClasses} className="flex items-center text-gray-400 hover:text-schoolGreen font-bold mb-4 transition text-sm">
                                 <ArrowLeft size={16} className="mr-2" /> Back to Classes
@@ -301,6 +302,23 @@ const AdminStudents = () => {
                                         className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl outline-none text-gray-500"
                                     />
                                 </div>
+
+                                {/* Department Selection (Only for Senior Classes) */}
+                                {(formData.classLevel.startsWith('SS') || formData.classLevel.includes('Senior')) && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Department</label>
+                                        <select
+                                            value={formData.department || ''}
+                                            onChange={e => setFormData({ ...formData, department: e.target.value })}
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen"
+                                        >
+                                            <option value="">Select Department</option>
+                                            <option value="Science">Science</option>
+                                            <option value="Art">Art</option>
+                                            <option value="Commercial">Commercial</option>
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Gender</label>
                                     <select

@@ -24,7 +24,7 @@ const DashboardLayout = () => {
 
   const menus = {
     admin: [
-      { name: 'Cockpit', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },
+      { name: 'Workspace', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },
       { name: 'Payments', icon: <CheckSquare size={20} />, path: '/portal/admin-payments' },
       { name: 'Notices', icon: <Bell size={20} />, path: '/portal/admin-notices' },
       { name: 'Admissions', icon: <UserPlus size={20} />, path: '/portal/admissions' },
@@ -89,9 +89,29 @@ const DashboardLayout = () => {
           color: 'bg-blue-600'
         });
       } else {
+        // Student - Resolve Class Name if missing
+        let className = storedUser.classLevel;
+
+        // If classLevel is missing or looks like an ID (number), try to fetch the real name
+        if (!className || !isNaN(className)) {
+          try {
+            const classId = storedUser.current_class_id || storedUser.class_id || className; // fallback to className if it was actually an ID
+            if (classId) {
+              const classes = await getClasses();
+              // Loose equality check for string/number ID mismatch
+              const foundClass = classes.find(c => c.id == classId);
+              if (foundClass) {
+                className = foundClass.name;
+              }
+            }
+          } catch (err) {
+            console.error("Error resolving class name:", err);
+          }
+        }
+
         setDisplayUser({
           title: storedUser.name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || 'Student',
-          sub: storedUser.classLevel || storedUser.current_class_id || storedUser.department || 'Student Access',
+          sub: className || storedUser.department || 'Student Access',
           badge: 'S',
           color: 'bg-schoolGold'
         });

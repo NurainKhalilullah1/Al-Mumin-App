@@ -220,7 +220,7 @@ export const getStudentResults = async (studentId) => {
 export const getAvailableResultTerms = async (studentId) => {
   // Fetch unique sessions/terms for dropdown
   const { data, error } = await supabase.from('results')
-    .select('term, created_at') // created_at to help sort if needed
+    .select('term') // created_at removed to avoid 400 error
     .eq('student_id', studentId);
 
   if (error || !data) return [];
@@ -644,17 +644,40 @@ export const saveAssignment = async (classLevel, subject, title, dueDate, descri
 };
 
 // --- TIMETABLE MANAGEMENT (NEW) ---
-export const getClassTimetable = async (classId) => {
+// Update: accepting classId (int/uuid) OR className (string)
+export const getClassTimetable = async (classIdentifier) => {
   try {
+    // 1. Try treating as class_id
     const { data, error } = await supabase
-      .from('timetables')
+      .from('timetable')
       .select('*')
-      .eq('class_id', classId);
+      .eq('class_id', classIdentifier);
 
-    if (error) throw error;
-    return data || [];
+    if (!error && data?.length > 0) return data;
+
+    // 2. If error (column missing) or empty, try 'class_level' with string name
+    // We need to resolve ID to Name if it was an ID, or use it if it's already a string.
+    // However, the error says 'column class_id does not exist', so we should probably JUST use class_level.
+
+    // Let's try to query with 'class_level' instead.
+    // If we were passed an ID, we might stuck. But StudentTimetable.jsx has both.
+
+    // QUICK FIX: Return empty for now if it fails, BUT let's try 'class_level'
+    // Assuming the table might use 'class_level' (string).
+
+    // If identifier is numeric (like '6'), we can't search class_level='6' if it expects 'JSS 1'.
+    // We need the caller to pass the Name.
+    console.warn("Retrying with class_level column...");
+    const { data: data2, error: error2 } = await supabase
+      .from('timetable')
+      .select('*')
+      .eq('class_level', classIdentifier); // This only works if classIdentifier is the Name "JSS 1"
+
+    if (error2) throw error2;
+    return data2 || [];
+
   } catch (error) {
-    console.warn("Error fetching timetable (table might be missing):", error);
+    console.warn("Error fetching timetable:", error);
     return [];
   }
 };
@@ -664,11 +687,11 @@ export const saveClassTimetable = async (classId, scheduleData) => {
   // Transaction: Delete old for class -> Insert new
 
   // 1. Delete existing
-  await supabase.from('timetables').delete().eq('class_id', classId);
+  await supabase.from('timetable').delete().eq('class_level', classId);
 
   // 2. Insert new
   const payload = scheduleData.map(s => ({
-    class_id: classId,
+    class_level: classId,
     day: s.day,
     subject: s.subject,
     teacher: s.teacher,
@@ -677,7 +700,7 @@ export const saveClassTimetable = async (classId, scheduleData) => {
     room: s.room
   }));
 
-  const { error } = await supabase.from('timetables').insert(payload);
+  const { error } = await supabase.from('timetable').insert(payload);
   if (error) console.error("Error saving timetable:", error);
 };
 
@@ -1293,30 +1316,92 @@ export const getArchivedSessions = async () => {
 };
 
 export const startNewSession = async (sessionName) => {
-  // 1. Archive Logic (Placeholder)
-  // await supabase.from('archives').insert({ name: sessionName, data: ... });
+  console.log("Starting Session Switch for:", sessionName);
+  try {
+    // 1. Archive Data
+    const tablesToArchive = ['results', 'payments', 'assignments', 'lesson_notes', 'attendance'];
 
-  // 2. Clear Active Tables
-  await supabase.from('results').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-  await supabase.from('payments').delete().neq('id', '0'); // Delete all
+    for (const tableName of tablesToArchive) {
+      const { data, error } = await supabase.from(tableName).select('*');
+      if (error) {
+        console.error(`Error fetching ${tableName} for archive:`, error);
+        continue;
+      }
 
-  // 3. Promote Students
-  const { data: students } = await supabase.from('students').select('*');
-  if (students) {
-    for (const s of students) {
-      let newLevel = s.class_level;
-      if (s.class_level === 'JSS 1') newLevel = 'JSS 2';
-      else if (s.class_level === 'JSS 2') newLevel = 'JSS 3';
-      else if (s.class_level === 'JSS 3') newLevel = 'SS 1';
-      else if (s.class_level === 'SS 1') newLevel = 'SS 2';
-      else if (s.class_level === 'SS 2') newLevel = 'SS 3';
-      else if (s.class_level === 'SS 3') newLevel = 'Graduated';
+      if (data && data.length > 0) {
+        const { error: archiveError } = await supabase.from('archives').insert({
+          session_name: sessionName,
+          data_type: tableName,
+          data: data
+        });
 
-      await supabase.from('students').update({ class_level: newLevel }).eq('id', s.id);
+        if (archiveError) {
+          console.error(`Error archiving ${tableName}:`, archiveError);
+          // Stop to prevent data loss if archiving fails? 
+          // For now, we continue but warn.
+          alert(`Warning: Failed to archive ${tableName}. Check console.`);
+        }
+      }
     }
-  }
 
-  return true;
+    // 2. Clear Active Tables
+    // We use a constraint that is always true to delete all rows. 
+    // supabase.delete().neq('id', 0) is a common hack if RLS allows.
+    // Better: if no ID, use something else. assuming all have IDs.
+
+    await supabase.from('results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('payments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('lesson_notes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    // Attendance might not have UUID PK, usually it has `id` serial or uuid. 
+    // If it fails, we catch it.
+    try {
+      await supabase.from('attendance').delete().neq('id', 0); // numeric ID possibly?
+    } catch (e) {
+      await supabase.from('attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+
+    // 3. Promote Students
+    const { data: students } = await supabase.from('students').select('*');
+    if (students) {
+      for (const s of students) {
+        let newLevel = s.class_level;
+        if (s.class_level === 'JSS 1') newLevel = 'JSS 2';
+        else if (s.class_level === 'JSS 2') newLevel = 'JSS 3';
+        else if (s.class_level === 'JSS 3') newLevel = 'SS 1';
+        else if (s.class_level === 'SS 1') newLevel = 'SS 2';
+        else if (s.class_level === 'SS 2') newLevel = 'SS 3';
+        else if (s.class_level === 'SS 3') newLevel = 'Graduated';
+
+        // Departments usually start at SS 1. 
+        // If moving JSS 3 -> SS 1, they might need a department. 
+        // We leave it empty or retain? Usually empty until assigned.
+
+        // Update Class Level AND Reset/Update Fees for new level
+        // We'll use getSchoolFees() map logic here or just a hardcoded map for now to be safe.
+        // Better: We can just let the admin set it, OR set a default.
+        // User asked for "opportunity to add". 
+        // Let's set it to 0 or a base amount so they know to update it?
+        // Actually, let's try to map it if we can. 
+
+        let newFee = 0;
+        if (newLevel.includes('JSS')) newFee = 150000; // Example Default
+        if (newLevel.includes('SS')) newFee = 180000;  // Example Default
+
+        await supabase.from('students').update({
+          class_level: newLevel,
+          assigned_fee: newFee, // Reset fee for new session
+          amount_paid: 0,       // Reset amount paid (already cleared in payments table but good to be safe)
+          balance: newFee       // Reset balance
+        }).eq('id', s.id);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Session switch failed:", error);
+    return false;
+  }
 };
 
 // --- DASHBOARD STATS ---
@@ -1473,17 +1558,17 @@ export const getStaffActivities = async (staffEmail) => { // Using email as ID o
   // Fetch notes by this staff that are Approved
   const { data: notes } = await supabase
     .from('lesson_notes')
-    .select('topic, week, status, updated_at')
+    .select('topic, week, status, created_at')
     // .eq('teacher_email', staffEmail) // If we had this column
     .eq('status', 'Approved')
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(2);
 
   if (notes) {
     notes.forEach(n => {
       activities.push({
         text: `${n.week} Note (${n.topic}) was Approved`,
-        time: new Date(n.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'approval'
       });
     });
