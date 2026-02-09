@@ -64,6 +64,8 @@ function App() {
               <Route path="noticeboard" element={<NoticeBoard />} />
               <Route path="timetable" element={<StudentTimetable />} />
               <Route path="result-sheet" element={<ResultSheet />} />
+              <Route path="lesson-notes" element={<LessonNotes />} />
+              <Route path="assignments" element={<Assignments />} />
 
               {/* --- ADMIN ONLY ROUTES --- */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
@@ -84,8 +86,6 @@ function App() {
                 <Route path="staff-subjects" element={<StaffSubjects />} />
                 <Route path="classes" element={<MyClasses />} />
                 <Route path="scores" element={<ScoreSheet />} />
-                <Route path="lesson-notes" element={<LessonNotes />} />
-                <Route path="assignments" element={<Assignments />} />
                 <Route path="staff-admission" element={<StaffAdmission />} />
               </Route>
 

@@ -76,22 +76,22 @@ const DashboardLayout = () => {
         const { getAdminProfile } = await import('../utils/db');
         const profile = await getAdminProfile();
         setDisplayUser({
-          title: profile.name || 'Administrator',
+          title: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.name || 'Administrator',
           sub: profile.role || 'Admin Access',
           badge: 'A',
           color: 'bg-schoolGreen'
         });
       } else if (userRole === 'teacher') {
         setDisplayUser({
-          title: storedUser.name || 'Staff Member',
-          sub: storedUser.subject || 'Teacher',
+          title: storedUser.name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || 'Staff Member',
+          sub: storedUser.subject || storedUser.role || 'Teacher',
           badge: 'T',
           color: 'bg-blue-600'
         });
       } else {
         setDisplayUser({
-          title: storedUser.name || 'Student',
-          sub: storedUser.class_level || 'Student Access',
+          title: storedUser.name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || 'Student',
+          sub: storedUser.classLevel || storedUser.current_class_id || storedUser.department || 'Student Access',
           badge: 'S',
           color: 'bg-schoolGold'
         });

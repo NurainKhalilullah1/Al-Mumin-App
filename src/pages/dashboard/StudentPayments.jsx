@@ -9,6 +9,8 @@ const StudentPayments = () => {
     const [bankDetails, setBankDetails] = useState({});
     const [history, setHistory] = useState([]);
     const [amount, setAmount] = useState('');
+    const [file, setFile] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const { addToast } = useToast();
 
@@ -35,9 +37,10 @@ const StudentPayments = () => {
 
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!amount || amount <= 0) return;
+        setSubmitting(true);
 
         const paymentData = {
             studentId: user.id,
@@ -45,16 +48,22 @@ const StudentPayments = () => {
             classLevel: user.classLevel || 'N/A',
             amount: amount,
             method: 'Transfer',
-            receiptRef: `REF-${Date.now().toString().slice(-6)}` // Mock Receipt
+            receiptRef: `REF-${Date.now().toString().slice(-6)}`,
+            file: file // Pass the file object
         };
 
-        const newPayment = savePayment(paymentData);
-        // addToast('Payment claim submitted!', 'success'); // Replaced by Modal
+        const result = await savePayment(paymentData);
+        setSubmitting(false);
 
-        setShowForm(false);
-        setAmount('');
-        setShowSuccess(true); // Show Success Modal
-        loadData();
+        if (result.success) {
+            setShowForm(false);
+            setAmount('');
+            setFile(null);
+            setShowSuccess(true); // Show Success Modal
+            loadData(user);
+        } else {
+            addToast('Failed to submit payment. Please try again.', 'error');
+        }
     };
 
     if (!feeStatus) return <div className="p-10 text-center">Loading...</div>;
@@ -89,8 +98,8 @@ const StudentPayments = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">My School Fees</h1>
-                    <p className="text-gray-500">View outstanding fees and payment history</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">My School Fees</h1>
+                    <p className="text-gray-500 text-sm md:text-base">View outstanding fees and payment history</p>
                 </div>
             </div>
 
@@ -202,13 +211,23 @@ const StudentPayments = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-600 mb-1">Upload Receipt (PDF/Image)</label>
-                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 transition cursor-pointer">
+                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 transition cursor-pointer relative">
+                                        <input
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            onChange={(e) => setFile(e.target.files[0])}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
                                         <Upload size={24} className="mb-2" />
-                                        <span className="text-sm">Click to browse mock file</span>
+                                        <span className="text-sm">{file ? file.name : "Click to browse file"}</span>
                                     </div>
                                 </div>
-                                <button type="submit" className="w-full py-3 bg-schoolGreen text-white font-bold rounded-xl hover:bg-green-900 transition shadow-lg shadow-green-900/10">
-                                    Submit Claim
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="w-full py-3 bg-schoolGreen text-white font-bold rounded-xl hover:bg-green-900 transition shadow-lg shadow-green-900/10 disabled:opacity-50 flex justify-center"
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Claim'}
                                 </button>
                             </form>
                         </div>

@@ -246,6 +246,9 @@ const AdminAdmissions = () => {
                                 <input type="text" required className="p-3 bg-gray-50 border rounded-xl w-full" placeholder="Parent Name" value={formData.parentName} onChange={e => setFormData({ ...formData, parentName: e.target.value })} />
                                 <input type="text" required className="p-3 bg-gray-50 border rounded-xl w-full" placeholder="Parent Phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                             </div>
+                            <div>
+                                <input type="number" className="p-3 bg-gray-50 border rounded-xl w-full" placeholder="Assigned Fee (Optional override)" value={formData.assignedFee || ''} onChange={e => setFormData({ ...formData, assignedFee: e.target.value })} />
+                            </div>
                         </div>
                         <button type="submit" className="w-full mt-8 bg-schoolGreen text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-schoolGold transition shadow-lg">Save Registration</button>
                     </form>

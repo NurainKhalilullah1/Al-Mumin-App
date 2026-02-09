@@ -217,6 +217,47 @@ export const getStudentResults = async (studentId) => {
   }));
 };
 
+export const getAvailableResultTerms = async (studentId) => {
+  // Fetch unique sessions/terms for dropdown
+  const { data, error } = await supabase.from('results')
+    .select('term, created_at') // created_at to help sort if needed
+    .eq('student_id', studentId);
+
+  if (error || !data) return [];
+
+  // Unique terms
+  const terms = [...new Set(data.map(item => item.term))];
+  return terms.sort(); // or custom sort
+};
+
+export const getStudentResultsByTerm = async (studentId, term) => {
+  const { data, error } = await supabase.from('results')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('term', term);
+
+  if (error) return [];
+
+  // Calculate Stats
+  let totalScore = 0;
+  const approved = data.filter(r => r.approval_status === 'Approved');
+
+  approved.forEach(r => totalScore += (r.total || 0));
+  const average = approved.length > 0 ? (totalScore / approved.length).toFixed(1) : 0;
+
+  return {
+    termName: term,
+    results: approved.map(r => ({
+      subject: r.subject,
+      test1: r.test1, test2: r.test2, midTerm: r.mid_term, exam: r.exam,
+      total: r.total, grade: r.grade, remark: r.remark,
+      approvalStatus: r.approval_status
+    })),
+    average,
+    isPending: data.length > 0 && approved.length === 0
+  };
+};
+
 export const getClassResults = async (className, term) => {
   // 1. Get students of this class
   const students = await getStudentsByClass(className);
@@ -530,64 +571,40 @@ export const getTickerNotices = async () => {
   }
 };
 
-// --- ATTENDANCE MANAGEMENT (ASYNC - SUPABASE) ---
-export const getAttendance = async (classLevel, date) => {
-  try {
-    const { data, error } = await supabase.from('attendance')
-      .select('student_id, status')
-      .eq('class_level', classLevel)
-      .eq('date', date);
+// --- ATTENDANCE (REAL DB) ---
+export const getAttendance = async (className, date) => {
+  const { data, error } = await supabase
+    .from('student_attendance') // Correct table
+    .select('student_id, status')
+    .eq('class_name', className)
+    .eq('date', date);
 
-    if (error) throw error;
-    if (!data) return {};
+  if (error || !data) return {};
 
-    const recordMap = {};
-    data.forEach(r => {
-      recordMap[r.student_id] = r.status;
-    });
-    return recordMap;
-  } catch (error) {
-    // console.warn("Attendance table missing or error. Using LocalStorage fallback.");
-    const records = getDB('schoolAttendance');
-    const found = records.find(r => r.id === `${classLevel}_${date}`);
-    return found ? found.records : {};
-  }
+  // Convert array back to map: { 'ID1': 'present', 'ID2': 'absent' }
+  const attendanceMap = {};
+  data.forEach(record => {
+    attendanceMap[record.student_id] = record.status;
+  });
+  return attendanceMap;
 };
 
-export const saveAttendance = async (classLevel, date, dataMap) => {
-  // Convert { 'SID': 'present' } to array of objects
-  const records = Object.entries(dataMap).map(([studentId, status]) => ({
+export const saveAttendance = async (className, date, attendanceMap) => {
+  const records = Object.entries(attendanceMap).map(([studentId, status]) => ({
     student_id: studentId,
+    class_name: className,
     date: date,
-    class_level: classLevel,
     status: status
   }));
 
   if (records.length === 0) return;
 
-  // Strategy: Upsert based on student_id + date. 
-  // Assuming a unique constraint exists on (student_id, date).
-  // If not, we should probably delete existing for this date/class first to avoid duplicates.
+  // Upsert (Insert or Update if student_id + date match)
+  const { error } = await supabase
+    .from('student_attendance')
+    .upsert(records, { onConflict: 'student_id, date' });
 
-  // Safe approach: Delete for this class/date first (or just assume Upsert works if configured).
-  // Let's try Delete-Insert for robustness without relying on specific unique constraint name.
-  try {
-    await supabase.from('attendance').delete().eq('class_level', classLevel).eq('date', date);
-    const { error } = await supabase.from('attendance').insert(records);
-    if (error) throw error;
-  } catch (error) {
-    console.warn("Saving attendance to DB failed. Saving to LocalStorage.");
-    const dbRecords = getDB('schoolAttendance');
-    const id = `${classLevel}_${date}`;
-    const existingIndex = dbRecords.findIndex(r => r.id === id);
-
-    if (existingIndex >= 0) {
-      dbRecords[existingIndex].records = dataMap;
-    } else {
-      dbRecords.push({ id, classLevel, date, records: dataMap });
-    }
-    saveDB('schoolAttendance', dbRecords);
-  }
+  if (error) console.error("Error saving attendance:", error);
 };
 
 export const getStudentAttendanceStats = async (studentId) => {
@@ -624,6 +641,44 @@ export const saveAssignment = async (classLevel, subject, title, dueDate, descri
 
   const { error } = await supabase.from('assignments').insert([payload]);
   if (error) console.error("Error saving assignment:", error);
+};
+
+// --- TIMETABLE MANAGEMENT (NEW) ---
+export const getClassTimetable = async (classId) => {
+  try {
+    const { data, error } = await supabase
+      .from('timetables')
+      .select('*')
+      .eq('class_id', classId);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.warn("Error fetching timetable (table might be missing):", error);
+    return [];
+  }
+};
+
+export const saveClassTimetable = async (classId, scheduleData) => {
+  // scheduleData = [{ day, subject, start_time, end_time, room, teacher }]
+  // Transaction: Delete old for class -> Insert new
+
+  // 1. Delete existing
+  await supabase.from('timetables').delete().eq('class_id', classId);
+
+  // 2. Insert new
+  const payload = scheduleData.map(s => ({
+    class_id: classId,
+    day: s.day,
+    subject: s.subject,
+    teacher: s.teacher,
+    start_time: s.startTime,
+    end_time: s.endTime,
+    room: s.room
+  }));
+
+  const { error } = await supabase.from('timetables').insert(payload);
+  if (error) console.error("Error saving timetable:", error);
 };
 
 export const getAssignments = async () => {
@@ -718,14 +773,35 @@ export const saveStudent = async (studentData) => {
       return { success: true, password: payload.password, name: `${firstName} ${lastName}` };
     } else {
       // --- INSERT LOGIC ---
+      // Use MAX ID strategy instead of COUNT to avoid collisions (409 Conflict)
+      // 1. Fetch the student with the latest admission number for this year
       const year = new Date().getFullYear();
-      const { count } = await supabase.from('students').select('*', { count: 'exact', head: true });
-      let attempts = 0;
-      let success = false;
-      let lastError = null;
+      let nextNum = 1;
 
-      let admissionNumber = `AMS/${year}/${(count + 1).toString().padStart(3, '0')}`;
+      // This query assumes admission_number format is 'AMS/YYYY/XXX'
+      const { data: lastStudent } = await supabase
+        .from('students')
+        .select('admission_number')
+        .ilike('admission_number', `AMS/${year}/%`)
+        .order('admission_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastStudent && lastStudent.admission_number) {
+        // Parse the number part: AMS/2026/055 -> 55
+        const parts = lastStudent.admission_number.split('/');
+        if (parts.length === 3) {
+          const lastNum = parseInt(parts[2], 10);
+          if (!isNaN(lastNum)) {
+            nextNum = lastNum + 1;
+          }
+        }
+      }
+
+      let admissionNumber = `AMS/${year}/${nextNum.toString().padStart(3, '0')}`;
       let password = `${lastName.toLowerCase()}123`;
+
+
 
       while (attempts < 5 && !success) {
         const { error } = await supabase.from('students').insert([{
@@ -1095,14 +1171,28 @@ export const savePayment = async (paymentData) => {
   return { ...paymentData, id: newId, status: 'Pending' };
 };
 
-export const verifyPayment = async (paymentId) => {
-  const { error } = await supabase.from('payments').update({ status: 'Verified' }).eq('id', paymentId);
-  return !error;
+export const verifyPayment = async (id) => {
+  const { error } = await supabase.from('payments').update({ status: 'Verified' }).eq('id', id);
+  if (error) {
+    console.error("Error verifying payment:", error);
+    return false;
+  }
+  return true;
+};
+
+export const rejectPayment = async (id) => {
+  const { error } = await supabase.from('payments').update({ status: 'Rejected' }).eq('id', id);
+  if (error) {
+    console.error("Error rejecting payment:", error);
+    return false;
+  }
+  return true;
 };
 
 export const getStudentFeeStatus = async (studentId) => {
   // 1. Get Student Info for Class Level & Assigned Fee
-  const { data: student } = await supabase.from('students').select('class_level, assigned_fee').eq('id', studentId).single();
+  // 1. Get Student Info (select * is safer against missing columns than explicit list which errors)
+  const { data: student } = await supabase.from('students').select('*').eq('id', studentId).single();
   if (!student) return { totalFee: 0, totalPaid: 0, outstanding: 0, status: 'Unknown' };
 
   // 2. Get Total Fee (Use explicit student fee if set, otherwise class default)
@@ -1400,4 +1490,19 @@ export const getStaffActivities = async (staffEmail) => { // Using email as ID o
   }
 
   return activities;
+};
+
+// --- DAILY ADHEETH ---
+export const getDailyAdheeth = async () => {
+  // Fetch a random adheeth/quote
+  const { data, error } = await supabase.from('daily_adheeth').select('*');
+  if (error || !data || data.length === 0) {
+    return {
+      content: "The best among you are those who learn the Quran and teach it.",
+      source: "Sahih Bukhari"
+    };
+  }
+  // Randomize
+  const randomIndex = Math.floor(Math.random() * data.length);
+  return data[randomIndex];
 };

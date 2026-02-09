@@ -17,7 +17,7 @@ const AdminStudents = () => {
     const [refreshing, setRefreshing] = useState(false);
 
     // Form State
-    const [formData, setFormData] = useState({ id: null, name: '', classLevel: '', gender: 'M', parentPhone: '' });
+    const [formData, setFormData] = useState({ id: null, name: '', classLevel: '', gender: 'M', parentPhone: '', assignedFee: 0 });
 
     useEffect(() => {
         loadClasses();
@@ -81,7 +81,9 @@ const AdminStudents = () => {
         setFormData({
             ...student,
             classLevel: selectedClass ? selectedClass.name : student.classLevel,
-            parentPhone: student.parent_phone || ''
+            classLevel: selectedClass ? selectedClass.name : student.classLevel,
+            parentPhone: student.parent_phone || '',
+            assignedFee: student.assigned_fee || 0
         });
         setShowModal(true);
     };
@@ -188,7 +190,7 @@ const AdminStudents = () => {
 
                     <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-black/5 overflow-hidden animate-in slide-in-from-right duration-300">
                         <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-xs uppercase font-bold text-gray-400 border-b border-gray-100">
+                            <thead className="bg-gray-50 text-xs uppercase font-bold text-gray-400 border-b border-gray-100 hidden md:table-header-group">
                                 <tr>
                                     <th className="p-6">Student Profile</th>
                                     <th className="p-6">Gender</th>
@@ -196,32 +198,64 @@ const AdminStudents = () => {
                                     <th className="p-6 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-50 bg-white">
                                 {filteredStudents.map((student, idx) => (
-                                    <tr key={idx} className="hover:bg-green-50/30 transition group">
-                                        <td className="p-6 flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold relative shadow-md ${student.gender === 'Female' || student.gender === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                {student.name.charAt(0)}
-                                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-gray-800 text-sm group-hover:text-schoolGreen transition">{student.name}</h3>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{student.admission_number || student.id || 'N/A'}</p>
-                                            </div>
-                                        </td>
-                                        <td className="p-6 text-sm font-bold text-gray-500">{student.gender}</td>
-                                        <td className="p-6 text-sm font-bold text-gray-500">{student.parent_phone || 'N/A'}</td>
-                                        <td className="p-6 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-schoolGreen hover:bg-schoolGreen/10 rounded-lg transition" title="Edit Details">
-                                                    <Edit2 size={18} />
-                                                </button>
-                                                <button onClick={() => handleDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Student">
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <React.Fragment key={idx}>
+                                        {/* DESKTOP ROW */}
+                                        <tr className="hover:bg-green-50/30 transition group hidden md:table-row">
+                                            <td className="p-6 flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold relative shadow-md ${student.gender === 'Female' || student.gender === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                    {student.name.charAt(0)}
+                                                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-sm group-hover:text-schoolGreen transition">{student.name}</h3>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{student.admission_number || student.id || 'N/A'}</p>
+                                                </div>
+                                            </td>
+                                            <td className="p-6 text-sm font-bold text-gray-500">{student.gender}</td>
+                                            <td className="p-6 text-sm font-bold text-gray-500">{student.parent_phone || 'N/A'}</td>
+                                            <td className="p-6 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-schoolGreen hover:bg-schoolGreen/10 rounded-lg transition" title="Edit Details">
+                                                        <Edit2 size={18} />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Student">
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {/* MOBILE CARD (Visible only on small screens) */}
+                                        <tr className="md:hidden border-b border-gray-100 last:border-0 block">
+                                            <td colSpan="4" className="p-4 block">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${student.gender === 'Female' || student.gender === 'F' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                            {student.name.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-gray-800 text-sm">{student.name}</h3>
+                                                            <p className="text-[10px] text-gray-400 uppercase">{student.admission_number}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => handleEdit(student)} className="p-2 text-gray-400 hover:text-schoolGreen bg-gray-50 rounded-lg">
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button onClick={() => handleDelete(student.id)} className="p-2 text-gray-400 hover:text-red-600 bg-red-50 rounded-lg">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex justify-between items-center text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+                                                    <div><span className="font-bold uppercase text-[10px] text-gray-400 mr-1">Phone:</span>{student.parent_phone || 'N/A'}</div>
+                                                    <div><span className="font-bold uppercase text-[10px] text-gray-400 mr-1">Gender:</span>{student.gender}</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
@@ -288,6 +322,17 @@ const AdminStudents = () => {
                                     onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen"
                                     placeholder="e.g. 080..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Assigned Fee (₦)</label>
+                                <input
+                                    type="number"
+                                    value={formData.assignedFee}
+                                    onChange={e => setFormData({ ...formData, assignedFee: e.target.value })}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-schoolGreen"
+                                    placeholder="e.g. 50000"
                                 />
                             </div>
 

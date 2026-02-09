@@ -82,23 +82,23 @@ const LessonNotes = () => {
     <div className="animate-in fade-in duration-500 relative min-h-screen">
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Lesson Notes</h1>
-          <p className="text-gray-500 mt-1">Manage your weekly lesson plans. Notes pending approval are yellow.</p>
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-schoolGreen">Lesson Notes</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Manage your weekly lesson plans. Notes pending approval are yellow.</p>
         </div>
 
-        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 mt-4 md:mt-0 flex self-end">
+        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 w-full lg:w-auto flex">
           <button
             onClick={() => setActiveTab('view')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center ${activeTab === 'view' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 lg:flex-none justify-center px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'view' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
           >
             <FileText size={16} className="mr-2" /> View All
           </button>
           {userRole !== 'student' && (
             <button
               onClick={() => setActiveTab('upload')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center ${activeTab === 'upload' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`flex-1 lg:flex-none justify-center px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'upload' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               <Plus size={16} className="mr-2" /> Upload New
             </button>

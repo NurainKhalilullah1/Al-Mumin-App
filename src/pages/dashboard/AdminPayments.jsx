@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getPayments, verifyPayment, getSchoolFees, getAdminBankDetails, saveAdminBankDetails } from '../../utils/db';
+import { getPayments, verifyPayment, rejectPayment, getSchoolFees, getAdminBankDetails, saveAdminBankDetails } from '../../utils/db';
 import { CreditCard, CheckCircle, Clock, FileText, Search, Download, AlertCircle, Settings as SettingsIcon, X } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
 
@@ -34,24 +34,28 @@ const AdminPayments = () => {
     };
 
     const handleVerify = async (id) => {
-        // Optimistic UI Update or Force Reload
         const success = await verifyPayment(id);
         if (success) {
             toast.success('Payment verified successfully');
-            // Manually update local state to reflect change immediately
             setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'Verified' } : p));
-
-            // Recalculate stats based on new state
-            setStats(prev => ({
-                ...prev,
-                pending: prev.pending - 1,
-                verified: prev.verified + 1,
-            }));
-            loadData(); // Ensure consistent sync
+            setStats(prev => ({ ...prev, pending: prev.pending - 1, verified: prev.verified + 1 }));
         } else {
             toast.error('Failed to verify payment.');
         }
     };
+
+    const handleReject = async (id) => {
+        if (!window.confirm("Are you sure you want to reject this payment?")) return;
+        const success = await rejectPayment(id); // Ensure this is imported
+        if (success) {
+            toast.error('Payment rejected');
+            setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'Rejected' } : p));
+            setStats(prev => ({ ...prev, pending: prev.pending - 1 }));
+        }
+    };
+
+    // Modal State
+    const [viewProof, setViewProof] = useState(null); // url string
 
     const filteredPayments = payments.filter(p => {
         const term = searchTerm.toLowerCase();
@@ -66,13 +70,11 @@ const AdminPayments = () => {
 
     useEffect(() => {
         if (showSettings) {
-            if (showSettings) {
-                const loadSettings = async () => {
-                    const details = await getAdminBankDetails();
-                    setBankDetails(details);
-                };
-                loadSettings();
-            }
+            const loadSettings = async () => {
+                const details = await getAdminBankDetails();
+                setBankDetails(details);
+            };
+            loadSettings();
         }
     }, [showSettings]);
 
@@ -129,6 +131,32 @@ const AdminPayments = () => {
                     </button>
                 </div>
             </div>
+
+            {/* View Proof Modal */}
+            {viewProof && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="relative bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-4 flex justify-between items-center bg-gray-100 border-b border-gray-200">
+                            <h3 className="font-bold text-gray-700">Payment Proof</h3>
+                            <button onClick={() => setViewProof(null)} className="p-2 bg-white rounded-full hover:bg-red-50 hover:text-red-500 transition shadow-sm">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4 bg-gray-50 flex items-center justify-center">
+                            {viewProof.endsWith('.pdf') ? (
+                                <iframe src={viewProof} className="w-full h-[70vh]" title="Proof PDF"></iframe>
+                            ) : (
+                                <img src={viewProof} alt="Proof" className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-md" />
+                            )}
+                        </div>
+                        <div className="p-4 bg-white border-t border-gray-200 text-center">
+                            <a href={viewProof} target="_blank" rel="noopener noreferrer" className="text-schoolGreen font-bold hover:underline flex items-center justify-center">
+                                <Download size={16} className="mr-2" /> Download Original File
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Bank Settings Modal */}
             {showSettings && (
@@ -245,7 +273,7 @@ const AdminPayments = () => {
                                 <th className="px-6 py-4">Class</th>
                                 <th className="px-6 py-4">Amount</th>
                                 <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Method</th>
+                                <th className="px-6 py-4">Proof</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4">Actions</th>
                             </tr>
@@ -254,34 +282,46 @@ const AdminPayments = () => {
                             {filteredPayments.length > 0 ? (
                                 filteredPayments.map((payment) => (
                                     <tr key={payment.id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4 font-mono text-gray-500">{payment.id}</td>
+                                        <td className="px-6 py-4 font-mono text-gray-500 text-xs">{payment.id && payment.id.substring(0, 8)}...</td>
                                         <td className="px-6 py-4 font-bold text-gray-700">{payment.studentName}</td>
                                         <td className="px-6 py-4 text-gray-600">{payment.classLevel}</td>
                                         <td className="px-6 py-4 font-bold text-gray-800">₦{parseInt(payment.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-gray-600">{payment.date}</td>
-                                        <td className="px-6 py-4 text-gray-600">{payment.method}</td>
+                                        <td className="px-6 py-4 text-gray-600">
+                                            {payment.proofUrl ? (
+                                                <button onClick={() => setViewProof(payment.proofUrl)} className="flex items-center text-blue-600 hover:text-blue-800 font-bold text-xs underline">
+                                                    <FileText size={14} className="mr-1" /> View
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-400 italic text-xs">No Proof</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${payment.status === 'Verified'
                                                 ? 'bg-green-100 text-green-700'
-                                                : 'bg-orange-100 text-orange-700'
+                                                : payment.status === 'Rejected'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-orange-100 text-orange-700'
                                                 }`}>
-                                                {payment.status === 'Verified' && <CheckCircle size={12} className="mr-1" />}
-                                                {payment.status === 'Pending' && <Clock size={12} className="mr-1" />}
                                                 {payment.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            {payment.status === 'Pending' ? (
-                                                <button
-                                                    onClick={() => handleVerify(payment.id)}
-                                                    className="text-schoolGreen hover:text-green-700 font-bold text-xs bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition"
-                                                >
-                                                    Verify
-                                                </button>
-                                            ) : (
-                                                <button className="text-gray-400 font-medium text-xs cursor-not-allowed">
-                                                    Archived
-                                                </button>
+                                            {payment.status === 'Pending' && (
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={() => handleVerify(payment.id)}
+                                                        className="text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm"
+                                                    >
+                                                        Verify
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleReject(payment.id)}
+                                                        className="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
                                             )}
                                         </td>
                                     </tr>

@@ -59,23 +59,23 @@ const Assignments = () => {
     <div className="animate-in fade-in duration-500">
 
       {/* --- HEADER --- */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Assignments</h1>
-          <p className="text-gray-500 mt-1">Manage homework and project files.</p>
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-schoolGreen">Assignments</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Manage homework and project files.</p>
         </div>
 
-        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 mt-4 md:mt-0 flex self-end">
+        <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-200 w-full lg:w-auto flex">
           <button
             onClick={() => setActiveTab('view')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center ${activeTab === 'view' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 lg:flex-none justify-center px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'view' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
           >
             <FileText size={16} className="mr-2" /> View All
           </button>
           {userRole !== 'student' && (
             <button
               onClick={() => setActiveTab('post')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center ${activeTab === 'post' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`flex-1 lg:flex-none justify-center px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center whitespace-nowrap ${activeTab === 'post' ? 'bg-schoolGreen text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               <Plus size={16} className="mr-2" /> Post New
             </button>
@@ -96,34 +96,39 @@ const Assignments = () => {
             </div>
           ) : (
             tasks.map((task) => (
-              <div key={task.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between hover:border-schoolGreen transition group">
+              <div key={task.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between hover:border-schoolGreen transition group gap-4">
 
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 w-full">
                   <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
                     <FileText size={24} />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-gray-800 text-lg">{task.title}</h3>
-                    <div className="flex flex-wrap items-center text-xs text-gray-500 gap-3 mt-1">
-                      <span className="font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-600">{task.classLevel}</span>
-                      <span className="font-bold text-schoolGreen">{task.subject}</span>
-                      <span className="flex items-center"><Calendar size={12} className="mr-1" /> Due: {task.dueDate}</span>
-                      {task.attachment && <span className="flex items-center text-blue-600"><Upload size={12} className="mr-1" /> {task.attachment}</span>}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-gray-800 text-base md:text-lg truncate pr-2">{task.title}</h3>
+                    <div className="flex flex-wrap items-center text-xs text-gray-500 gap-2 mt-1">
+                      <span className="font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-600 whitespace-nowrap">{task.classLevel}</span>
+                      <span className="font-bold text-schoolGreen whitespace-nowrap">{task.subject}</span>
+                      <span className="flex items-center whitespace-nowrap"><Calendar size={12} className="mr-1" /> Due: {task.dueDate}</span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-1">{task.description}</p>
+                    {task.attachment && (
+                      <div className="mt-2 text-xs text-blue-600 flex items-center break-all">
+                        <Upload size={12} className="mr-1 shrink-0" /> {task.attachment}
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-600 mt-2 line-clamp-2 md:line-clamp-1">{task.description}</p>
                   </div>
                 </div>
 
-                <div className="mt-4 md:mt-0 flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                  <div className="text-right mr-4">
-                    <span className="block font-bold text-2xl text-gray-800">{task.submissions}</span>
+                <div className="flex items-center justify-between w-full md:w-auto gap-4 mt-2 md:mt-0 pl-16 md:pl-0 border-t md:border-t-0 pt-4 md:pt-0 border-gray-50">
+                  <div className="text-left md:text-right">
+                    <span className="block font-bold text-lg md:text-2xl text-gray-800">{task.submissions}</span>
                     <span className="text-[10px] uppercase font-bold text-gray-400">Submissions</span>
                   </div>
-                  {userRole !== 'student' && (
-                    <button className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">Pending</span>
+                    <button className="text-gray-400 hover:text-schoolGreen p-2">
                       <Trash2 size={20} />
                     </button>
-                  )}
+                  </div>
                 </div>
 
               </div>

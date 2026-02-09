@@ -27,7 +27,7 @@ const NoticeBoard = () => {
     return (
         <div className="animate-in fade-in duration-500">
             <div className="mb-8">
-                <h1 className="text-3xl font-serif font-bold text-schoolGreen">School Bulletins</h1>
+                <h1 className="text-2xl md:text-3xl font-serif font-bold text-schoolGreen">School Bulletins</h1>
                 <p className="text-gray-500 mt-1 uppercase text-xs font-bold tracking-widest">Stay Updated</p>
             </div>
 

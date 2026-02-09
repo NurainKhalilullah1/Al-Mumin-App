@@ -4,17 +4,26 @@ import {
   BookOpen, Calendar, Download,
   FileText, CheckCircle, Award
 } from 'lucide-react';
-import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats, getStudentFeeStatus } from '../../utils/db'; // <--- IMPORT DB
+import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats, getStudentFeeStatus, getDailyAdheeth } from '../../utils/db'; // <--- IMPORT DB
 
 const StudentView = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
   const navigate = useNavigate();
 
   // State for Real Data
   const [assignmentList, setAssignmentList] = useState([]);
+  const [studentName, setStudentName] = useState('Loading...');
+  const [studentClass, setStudentClass] = useState('');
   const [stats, setStats] = useState(null);
   const [todaysClasses, setTodaysClasses] = useState([]);
   const [latestNotice, setLatestNotice] = useState(null);
+  const [dailyAdheeth, setDailyAdheeth] = useState(null);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   useEffect(() => {
     // 1. Fetch Assignments
@@ -31,6 +40,9 @@ const StudentView = () => {
       const userStr = localStorage.getItem('currentUser');
       if (userStr) {
         const user = JSON.parse(userStr);
+        setStudentName(user.name || `${user.first_name} ${user.last_name}` || 'Student');
+        setStudentClass(user.classLevel || user.current_class_id || ''); // Add fallback logic here if needed
+
         // Fetch real attendance
         const attStats = await getStudentAttendanceStats(user.id);
 
@@ -52,12 +64,12 @@ const StudentView = () => {
     };
     fetchRealStats();
 
-    // 3. Fetch Timetable
-    const fetchTimetable = async () => {
-      const classes = await getTodaysClasses();
-      setTodaysClasses(classes);
+    // 3. Fetch Daily Adheeth
+    const fetchAdheeth = async () => {
+      const adheeth = await getDailyAdheeth();
+      setDailyAdheeth(adheeth);
     };
-    fetchTimetable();
+    fetchAdheeth();
 
     // 4. Fetch Latest Notice
     const fetchNotices = async () => {
@@ -73,142 +85,100 @@ const StudentView = () => {
   return (
     <div>
       {/* --- WELCOME HEADER --- */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-8">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-schoolGreen">Student Portal</h1>
-          <p className="text-gray-500 mt-1">Welcome back, <span className="font-bold text-gray-800">Abdullah Musa (JSS 2A)</span>.</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4">
+        {/* Header Text - Aligned Left as requested */}
+        <div className="w-full lg:w-auto text-left">
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-schoolGreen">Student Portal</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">{getGreeting()}, <span className="font-bold text-gray-800">{studentName}</span>.</p>
         </div>
-        <div className="flex space-x-2 mt-4 md:mt-0">
-          <TabButton label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <TabButton label="Check Results" active={activeTab === 'results'} onClick={() => setActiveTab('results')} />
-          <TabButton
-            label="Assignments"
-            active={activeTab === 'assignments'}
-            count={assignmentList.length} // Show Real Count
-            onClick={() => setActiveTab('assignments')}
-          />
+
+        {/* Navigation Buttons - Grid on Mobile */}
+        <div className="w-full lg:w-auto grid grid-cols-2 lg:flex lg:flex-wrap gap-2">
+          {/* Direct Navigation Buttons */}
+          <button onClick={() => navigate('/portal/dashboard')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-schoolGreen text-white shadow-md transition-all whitespace-nowrap col-span-2 md:col-span-1 lg:flex-none">
+            Dashboard
+          </button>
+          <button onClick={() => navigate('/portal/result-sheet')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
+            Check Results
+          </button>
+          <button onClick={() => navigate('/portal/assignments')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
+            Assignments
+            {assignmentList.length > 0 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">{assignmentList.length}</span>}
+          </button>
+          <button onClick={() => navigate('/portal/lesson-notes')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
+            Lesson Notes
+          </button>
+          <button onClick={() => navigate('/portal/timetable')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none col-span-2 md:col-span-1">
+            Timetable
+          </button>
         </div>
       </div>
 
-      {/* 1. DASHBOARD TAB */}
-      {activeTab === 'dashboard' && (
-        <div className="animate-in fade-in duration-500">
+      {/* --- DASHBOARD WIDGETS --- */}
+      <div className="animate-in fade-in duration-500">
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-green-50 p-6 rounded-2xl border border-green-200 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-4"><CheckCircle size={24} /></div>
-              <div>
-                <p className="text-green-800 font-bold text-lg">{stats.feesPaid ? 'Fees Paid' : 'Unpaid'}</p>
-                <p className="text-green-600 text-xs">{stats.feesPaid ? 'No outstanding balance' : 'Contact Bursary'}</p>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-gray-800 font-bold text-lg mb-1">Attendance</p>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p><span className="font-bold text-green-600">{stats.presentCount}</span> Days Present</p>
-                  <p><span className="font-bold text-red-400">{stats.absentCount}</span> Days Absent</p>
-                </div>
-              </div>
-
-              {/* CIRCULAR PROGRESS RING */}
-              <div className="relative w-16 h-16">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                  <path className="text-gray-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                  <path className="text-schoolGreen transition-all duration-1000 ease-out" strokeDasharray={`${stats.attendance}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center font-bold text-xs text-schoolGreen">{stats.attendance}%</div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center">
-              <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600 mr-4"><Award size={24} /></div>
-              <div>
-                <p className="text-gray-800 font-bold text-lg">{stats.behavior}</p>
-                <p className="text-gray-400 text-xs">{stats.behaviorRemark}</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="bg-green-50 p-6 rounded-2xl border border-green-200 flex items-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-4 shrink-0"><CheckCircle size={24} /></div>
+            <div>
+              <p className="text-green-800 font-bold text-lg">{stats.feesPaid ? 'Fees Paid' : 'Unpaid'}</p>
+              <p className="text-green-600 text-xs">{stats.feesPaid ? 'No outstanding balance' : 'Contact Bursary'}</p>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-gray-800 mb-4">Today's Classes</h3>
-              <div className="space-y-4">
-                {todaysClasses.length > 0 ? (
-                  todaysClasses.map((c, i) => (
-                    <ClassItem
-                      key={i}
-                      subject={c.subject}
-                      time={c.time}
-                      teacher={c.teacher}
-                      status={c.status}
-                      active={c.status === 'Ongoing'}
-                    />
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm italic">No classes scheduled for today.</p>
-                )}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-gray-800 font-bold text-lg mb-1">Attendance</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><span className="font-bold text-green-600">{stats.presentCount}</span> Days Present</p>
+                <p><span className="font-bold text-red-400">{stats.absentCount}</span> Days Absent</p>
               </div>
             </div>
 
-            <div className="bg-schoolGreen text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
-              <div className="relative z-10">
-                <h3 className="font-serif font-bold text-xl mb-2">School Notice</h3>
-                <p className="text-green-100 text-sm mb-6 leading-relaxed">
-                  {latestNotice ? latestNotice.message : "The Prophet (SAW) said: \"Seeking knowledge is an obligation upon every Muslim.\""}
-                </p>
-                <button onClick={() => navigate('/portal/noticeboard')} className="bg-schoolGold text-schoolGreen px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white transition">View All Notices</button>
-              </div>
-              <div className="absolute -bottom-10 -right-10 opacity-10 text-white"><BookOpen size={150} /></div>
+            {/* CIRCULAR PROGRESS RING */}
+            <div className="relative w-16 h-16 shrink-0">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path className="text-gray-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                <path className="text-schoolGreen transition-all duration-1000 ease-out" strokeDasharray={`${stats.attendance}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center font-bold text-xs text-schoolGreen">{stats.attendance}%</div>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center">
+            <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600 mr-4 shrink-0"><Award size={24} /></div>
+            <div>
+              <p className="text-gray-800 font-bold text-lg">{stats.behavior}</p>
+              <p className="text-gray-400 text-xs">{stats.behaviorRemark}</p>
             </div>
           </div>
         </div>
-      )}
 
-      {/* 2. RESULTS TAB */}
-      {activeTab === 'results' && (
-        <div className="animate-in fade-in duration-500">
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-2xl mx-auto text-center">
-            <div className="w-16 h-16 bg-schoolGreen/10 text-schoolGreen rounded-full flex items-center justify-center mx-auto mb-4"><FileText size={32} /></div>
-            <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">Check Your Result</h3>
-            <p className="text-gray-500 mb-8">Select the session and term to view or download your report sheet.</p>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <select className="p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none"><option>2025/2026 Session</option></select>
-              <select className="p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none"><option>1st Term</option><option>2nd Term</option></select>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center relative overflow-hidden group">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-5"></div>
+            <div className="w-16 h-16 bg-schoolGold/10 rounded-full flex items-center justify-center text-schoolGold mb-4 group-hover:scale-110 transition-transform">
+              <BookOpen size={32} />
             </div>
-            <button onClick={() => navigate('/portal/result-sheet')} className="w-full bg-schoolGreen text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-schoolGold transition shadow-lg">View Result</button>
+            <h3 className="font-serif font-bold text-2xl text-schoolGreen mb-2">Daily Adheeth</h3>
+            <p className="text-gray-600 italic text-lg max-w-lg leading-relaxed">
+              "{dailyAdheeth ? dailyAdheeth.content : "Loading..."}"
+            </p>
+            <p className="text-sm font-bold text-schoolGold mt-4 uppercase tracking-widest">
+              — {dailyAdheeth ? dailyAdheeth.source : "..."}
+            </p>
+          </div>
+
+          <div className="bg-schoolGreen text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="font-serif font-bold text-xl mb-2">School Notice</h3>
+              <p className="text-green-100 text-sm mb-6 leading-relaxed">
+                {latestNotice ? latestNotice.message : "The Prophet (SAW) said: \"Seeking knowledge is an obligation upon every Muslim.\""}
+              </p>
+              <button onClick={() => navigate('/portal/noticeboard')} className="bg-schoolGold text-schoolGreen px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-white transition">View All Notices</button>
+            </div>
+            <div className="absolute -bottom-10 -right-10 opacity-10 text-white"><BookOpen size={150} /></div>
           </div>
         </div>
-      )}
-
-      {/* 3. ASSIGNMENTS TAB (Now Connected to DB) */}
-      {activeTab === 'assignments' && (
-        <div className="animate-in fade-in duration-500 space-y-4">
-          {assignmentList.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <p>No active assignments from your teachers.</p>
-            </div>
-          ) : (
-            assignmentList.map((task) => (
-              <div key={task.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex items-center justify-between group hover:border-schoolGreen transition cursor-pointer">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 mr-4 group-hover:bg-schoolGreen group-hover:text-white transition">
-                    <FileText size={18} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-800">{task.title}</h4>
-                    <p className="text-xs text-gray-500">{task.subject} • Due: {task.dueDate}</p>
-                    <p className="text-xs text-gray-400 mt-1">{task.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">Pending</span>
-                  <button className="text-gray-400 hover:text-schoolGreen"><Download size={20} /></button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      </div>
 
     </div>
   );

@@ -48,7 +48,8 @@ const Login = () => {
 
         localStorage.setItem('userRole', 'student');
         localStorage.setItem('currentUser', JSON.stringify(data));
-        notify.success(`Welcome, ${data.name}!`);
+        const studentName = data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Student';
+        notify.success(`Welcome, ${studentName}!`);
         navigate('/portal/dashboard');
       }
       else if (role === 'teacher' || role === 'staff') {
@@ -70,7 +71,8 @@ const Login = () => {
 
         localStorage.setItem('userRole', 'teacher');
         localStorage.setItem('currentUser', JSON.stringify(data));
-        notify.success(`Welcome, ${data.name}!`);
+        const staffName = data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Staff Member';
+        notify.success(`Welcome, ${staffName}!`);
         navigate('/portal/dashboard');
       }
     } catch (err) {
