@@ -1448,25 +1448,22 @@ export const getRecentActivities = async () => {
   const activities = [];
 
   // 1. Recent Admissions (Last 5)
-  // FIXED: Simplified query to avoid 400 Bad Request (likely due to missing created_at or relation issue)
+  // FIXED: Simplified query to avoid 400 Bad Request (created_at missing)
   const { data: newStudents } = await supabase
     .from('students')
-
-    .select('first_name, last_name, created_at') // Added created_at
-    .order('created_at', { ascending: false })
+    .select('first_name, last_name') // No created_at available
+    .order('id', { ascending: false }) // Use ID for recent
     .limit(5);
 
   if (newStudents) {
-    // Reverse locally since we can't reliably sort by ID without knowing if it's auto-increment int or uuid
-    // If it's 5 items, overhead is negligible.
-    newStudents.reverse().forEach(s => {
+    // Reverse (if needed locally, though simple limit works)
+    newStudents.forEach(s => {
       activities.push({
         type: 'admission',
         title: 'New Admission',
         desc: `${s.first_name} ${s.last_name} joined`,
-        desc: `${s.first_name} ${s.last_name} joined`,
-        time: s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recently',
-        originalTime: s.created_at ? new Date(s.created_at) : new Date()
+        time: 'Recently',
+        originalTime: new Date() // Fallback time
       });
     });
   }
