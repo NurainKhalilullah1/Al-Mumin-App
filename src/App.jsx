@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { ToastProvider } from './components/ToastProvider'; // <--- NEW IMPORT
 
 // Import Pages
