@@ -1451,7 +1451,7 @@ export const getRecentActivities = async () => {
   // FIXED: Simplified query to avoid 400 Bad Request (likely due to missing created_at or relation issue)
   const { data: newStudents } = await supabase
     .from('students')
-    .from('students')
+
     .select('first_name, last_name, created_at') // Added created_at
     .order('created_at', { ascending: false })
     .limit(5);
