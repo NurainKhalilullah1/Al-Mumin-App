@@ -501,7 +501,8 @@ export const getNotifications = async (userId) => {
   try {
     const { data, error } = await supabase.from('notifications')
       .select('*')
-      .eq('user_id', userId)
+      .select('*')
+      .or(`user_id.eq.${userId},user_id.eq.admin`) // Fetch personal AND admin-wide notifications
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
@@ -1193,6 +1194,19 @@ export const savePayment = async (paymentData) => {
   };
 
   const { error } = await supabase.from('payments').insert([payload]);
+
+  // --- SEND NOTIFICATION TO ADMIN ---
+  if (!error) {
+    const notifPayload = {
+      user_id: 'admin', // System-wide admin alert
+      message: `New Payment: ${paymentData.studentName || 'Student'} paid ₦${paymentData.amount}`,
+      type: 'payment',
+      read: false,
+      created_at: new Date().toISOString()
+    };
+    await supabase.from('notifications').insert([notifPayload]);
+  }
+
   if (error) console.error(error);
   return { ...paymentData, id: newId, status: 'Pending' };
 };
@@ -1437,8 +1451,9 @@ export const getRecentActivities = async () => {
   // FIXED: Simplified query to avoid 400 Bad Request (likely due to missing created_at or relation issue)
   const { data: newStudents } = await supabase
     .from('students')
-    .select('first_name, last_name') // Removed created_at and classes(name) for safety
-    // .order('created_at', { ascending: false }) // Likely missing column
+    .from('students')
+    .select('first_name, last_name, created_at') // Added created_at
+    .order('created_at', { ascending: false })
     .limit(5);
 
   if (newStudents) {
@@ -1449,8 +1464,9 @@ export const getRecentActivities = async () => {
         type: 'admission',
         title: 'New Admission',
         desc: `${s.first_name} ${s.last_name} joined`,
-        time: 'Recently',
-        originalTime: new Date() // Fallback time
+        desc: `${s.first_name} ${s.last_name} joined`,
+        time: s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Recently',
+        originalTime: s.created_at ? new Date(s.created_at) : new Date()
       });
     });
   }
@@ -1458,8 +1474,8 @@ export const getRecentActivities = async () => {
   // 2. Recent Payments (Verified)
   const { data: recentPayments } = await supabase
     .from('payments')
-    .select('student_name, amount, method, status, date') // Ensure 'date' column exists/is precise
-    .eq('status', 'Verified')
+    .select('student_name, amount, method, status, date')
+    //.eq('status', 'Verified') // SHOW ALL PAYMENTS (Verified + Pending)
     .order('date', { ascending: false })
     .limit(5);
 
@@ -1467,8 +1483,8 @@ export const getRecentActivities = async () => {
     recentPayments.forEach(p => {
       activities.push({
         type: 'payment',
-        title: 'Payment Verified',
-        desc: `Verified payment of ₦${p.amount} for ${p.student_name}`,
+        title: p.status === 'Verified' ? 'Payment Verified' : 'Payment Submitted',
+        desc: `${p.status} payment of ₦${p.amount} for ${p.student_name || 'Student'}`,
         time: p.date, // ISO string
         originalTime: new Date(p.date)
       });
