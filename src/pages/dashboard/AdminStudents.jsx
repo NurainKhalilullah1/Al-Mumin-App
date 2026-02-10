@@ -81,7 +81,7 @@ const AdminStudents = () => {
         setFormData({
             ...student,
             classLevel: selectedClass ? selectedClass.name : student.classLevel,
-            classLevel: selectedClass ? selectedClass.name : student.classLevel,
+
             parentPhone: student.parent_phone || '',
             department: student.department || '', // Load existing department
             assignedFee: student.assigned_fee || 0

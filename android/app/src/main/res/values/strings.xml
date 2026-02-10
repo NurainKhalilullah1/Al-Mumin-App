@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Al-Mumin School</string>
+    <string name="title_activity_main">Al-Mumin School</string>
+    <string name="package_name">com.almumin.school</string>
+    <string name="custom_url_scheme">com.almumin.school</string>
+</resources>

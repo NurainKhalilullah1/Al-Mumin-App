@@ -821,10 +821,13 @@ export const saveStudent = async (studentData) => {
         }
       }
 
+
       let admissionNumber = `AMS/${year}/${nextNum.toString().padStart(3, '0')}`;
       let password = `${lastName.toLowerCase()}123`;
 
-
+      let attempts = 0;
+      let success = false;
+      let lastError = null;
 
       while (attempts < 5 && !success) {
         const { error } = await supabase.from('students').insert([{

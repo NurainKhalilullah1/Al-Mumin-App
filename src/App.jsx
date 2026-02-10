@@ -41,7 +41,10 @@ const ScrollToTop = () => {
   return null;
 };
 
+
 function App() {
+  const isNative = Capacitor.isNativePlatform();
+
   return (
     <BrowserRouter>
       <ToastProvider>
@@ -49,7 +52,8 @@ function App() {
         <Routes>
           {/* ... routes ... */}
           {/* --- PUBLIC WEBSITE ROUTES --- */}
-          <Route path="/" element={<Home />} />
+          {/* Redirect to Login if on Mobile App, else show Landing Page */}
+          <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/admissions" element={<Admissions />} />
           <Route path="/gallery" element={<Gallery />} />
