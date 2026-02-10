@@ -118,7 +118,15 @@ const Login = () => {
           <ArrowLeft size={16} className="mr-2" /> Back Home
         </Link>
 
-        <div className="w-full max-w-md bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-100">
+        <div className="w-full max-w-md bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-100 relative">
+
+          {/* --- MOBILE/FORM LOGO --- */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-schoolGold p-2">
+              <img src="/logo.png" alt="School Logo" className="w-full h-full object-contain" />
+            </div>
+          </div>
+
           <div className="text-center mb-8">
             <h2 className="text-3xl font-serif font-bold text-schoolGreen mb-2">Portal Login</h2>
             <p className="text-gray-500 text-sm">Select your role to continue.</p>

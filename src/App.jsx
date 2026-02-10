@@ -10,6 +10,7 @@ import About from './pages/About';
 import Admissions from './pages/Admissions';
 import Gallery from './pages/Gallery';
 import Login from './pages/Login';
+import NotFound from './pages/NotFound'; // <--- NEW IMPORT
 
 // Import Dashboard Components
 import DashboardLayout from './layouts/DashboardLayout';
@@ -100,6 +101,8 @@ function App() {
             </Route>
           </Route>
 
+          {/* 404 - Page Not Found */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </ToastProvider>
     </BrowserRouter>
