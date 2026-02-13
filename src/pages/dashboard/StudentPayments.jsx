@@ -44,25 +44,31 @@ const StudentPayments = () => {
 
         const paymentData = {
             studentId: user.id,
-            studentName: user.name,
-            classLevel: user.classLevel || 'N/A',
+            studentName: feeStatus?.studentName || user.name || 'Student', // Proper Fallback
+            classLevel: feeStatus?.classLevel || user.classLevel || 'N/A', // Proper Fallback
             amount: amount,
             method: 'Transfer',
             receiptRef: `REF-${Date.now().toString().slice(-6)}`,
-            file: file // Pass the file object
+            file: file
         };
 
-        const result = await savePayment(paymentData);
-        setSubmitting(false);
+        try {
+            const result = await savePayment(paymentData);
+            setSubmitting(false);
 
-        if (result.success) {
-            setShowForm(false);
-            setAmount('');
-            setFile(null);
-            setShowSuccess(true); // Show Success Modal
-            loadData(user);
-        } else {
-            addToast('Failed to submit payment. Please try again.', 'error');
+            if (result && result.success) {
+                setShowForm(false);
+                setAmount('');
+                setFile(null);
+                setShowSuccess(true);
+                loadData(user);
+            } else {
+                addToast('Failed to submit payment. Please verify details and try again.', 'error');
+            }
+        } catch (error) {
+            setSubmitting(false);
+            console.error(error);
+            addToast('An error occurred during submission.', 'error');
         }
     };
 

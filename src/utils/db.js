@@ -1175,12 +1175,39 @@ export const getPayments = async () => {
     date: p.date,
     method: p.method,
     status: p.status,
-    receiptRef: p.receipt_ref
+    receiptRef: p.receipt_ref,
+    proofUrl: p.proof_url
   }));
 };
 
 export const savePayment = async (paymentData) => {
   const newId = `PAY-${Date.now()}`;
+  let proofUrl = null;
+
+  // 1. Upload File if exists
+  if (paymentData.file) {
+    try {
+      const fileExt = paymentData.file.name.split('.').pop();
+      const fileName = `${newId}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('payment-proofs')
+        .upload(filePath, paymentData.file);
+
+      if (uploadError) {
+        console.error("Error uploading proof:", uploadError);
+      } else {
+        const { data: { publicUrl } } = supabase.storage
+          .from('payment-proofs')
+          .getPublicUrl(filePath);
+        proofUrl = publicUrl;
+      }
+    } catch (e) {
+      console.error("Upload exception:", e);
+    }
+  }
+
   const payload = {
     id: newId,
     student_id: paymentData.studentId,
@@ -1190,7 +1217,8 @@ export const savePayment = async (paymentData) => {
     date: new Date().toISOString(), // Use ISO string for DB
     method: paymentData.method,
     status: 'Pending',
-    receipt_ref: paymentData.receiptRef || ''
+    receipt_ref: paymentData.receiptRef || '',
+    proof_url: proofUrl
   };
 
   const { error } = await supabase.from('payments').insert([payload]);
@@ -1198,17 +1226,23 @@ export const savePayment = async (paymentData) => {
   // --- SEND NOTIFICATION TO ADMIN ---
   if (!error) {
     const notifPayload = {
-      user_id: 'admin', // System-wide admin alert
-      message: `New Payment: ${paymentData.studentName || 'Student'} paid ₦${paymentData.amount}`,
+      user_id: 'admin', // System-wide admin alert (Must ensure user_id column is TEXT)
+      message: `New Payment: ${paymentData.studentName || 'Student'} paid ₦${Number(paymentData.amount).toLocaleString()}`,
       type: 'payment',
       read: false,
       created_at: new Date().toISOString()
     };
-    await supabase.from('notifications').insert([notifPayload]);
+    // Fire and forget notification to avoid blocking if table issue
+    supabase.from('notifications').insert([notifPayload]).then(({ error }) => {
+      if (error) console.warn("Notification insert failed:", error);
+    });
   }
 
-  if (error) console.error(error);
-  return { ...paymentData, id: newId, status: 'Pending' };
+  if (error) {
+    console.error(error);
+    return { success: false, error };
+  }
+  return { success: true, ...paymentData, id: newId, status: 'Pending', proofUrl };
 };
 
 export const verifyPayment = async (id) => {
@@ -1259,7 +1293,15 @@ export const getStudentFeeStatus = async (studentId) => {
   if (outstanding <= 0) status = 'Fully Paid';
   else if (totalPaid > 0) status = 'Partially Paid';
 
-  return { totalFee, totalPaid, totalPending, outstanding: Math.max(0, outstanding), status };
+  return {
+    totalFee,
+    totalPaid,
+    totalPending,
+    outstanding: Math.max(0, outstanding),
+    status,
+    studentName: student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Student', // Return updated name
+    classLevel: student.class_level || student.assigned_class || 'N/A' // Return valid class
+  };
 };
 
 // --- ADMIN PROFILE MANAGEMENT (ASYNC) ---
