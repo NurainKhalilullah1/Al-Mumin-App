@@ -31,8 +31,10 @@ const StudentPayments = () => {
         const bank = await getAdminBankDetails();
         setBankDetails(bank);
 
+        // Fetch payments and ensure robust filtering (string comparison)
         const allPayments = await getPayments();
-        setHistory(allPayments.filter(p => p.studentId === currentUser.id));
+        const myPayments = allPayments.filter(p => String(p.studentId) === String(currentUser.id));
+        setHistory(myPayments);
     };
 
     const [showSuccess, setShowSuccess] = useState(false);

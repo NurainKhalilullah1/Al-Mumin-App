@@ -1,7 +1,8 @@
 -- Fix Payments Table
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS proof_url TEXT;
 
--- Fix Notifications Table (Allow 'admin' string as ID)
+-- Fix Notifications Table
+-- 1. Create if not exists (with all columns)
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id TEXT, 
@@ -11,12 +12,15 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Attempt to alter column type if it exists and is not text (might fail if casting issues, but usually fine for UUID->TEXT)
+-- 2. Add 'type' column if it's missing (Crucial fix for 400 PGRST204 error)
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type TEXT;
+
+-- 3. Ensure user_id is TEXT (to allow 'admin' string)
 DO $$ 
 BEGIN 
     ALTER TABLE notifications ALTER COLUMN user_id TYPE TEXT; 
 EXCEPTION 
-    WHEN OTHERS THEN NULL; -- Ignore if it fails or already text
+    WHEN OTHERS THEN NULL; 
 END $$;
 
 -- Enable RLS for notifications
@@ -39,7 +43,6 @@ VALUES ('payment-proofs', 'payment-proofs', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage Policies
--- We need to ensure we don't duplicate policies.
 DROP POLICY IF EXISTS "Public Access Payment Proofs" ON storage.objects;
 DROP POLICY IF EXISTS "Student Upload Payment Proofs" ON storage.objects;
 

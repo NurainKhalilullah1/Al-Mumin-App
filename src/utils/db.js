@@ -947,6 +947,29 @@ export const getStudentsByClass = async (className) => {
 };
 
 export const deleteStudent = async (id) => {
+  // 1. Get Payment Proofs to Delete from Storage
+  const { data: payments } = await supabase.from('payments').select('proof_url').eq('student_id', id);
+
+  if (payments && payments.length > 0) {
+    const filesToDelete = payments
+      .map(p => p.proof_url)
+      .filter(url => url) // Filter out nulls
+      .map(url => {
+        // Extract filename from public URL (approximate)
+        // URL format: .../storage/v1/object/public/payment-proofs/filename.ext
+        const parts = url.split('/');
+        return parts[parts.length - 1];
+      });
+
+    if (filesToDelete.length > 0) {
+      const { error: storageError } = await supabase.storage
+        .from('payment-proofs')
+        .remove(filesToDelete);
+
+      if (storageError) console.error("Error deleting proof files:", storageError);
+    }
+  }
+
   // Cascade Delete: Remove related data first
   await supabase.from('results').delete().eq('student_id', id);
   await supabase.from('payments').delete().eq('student_id', id);
