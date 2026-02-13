@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentAttendanceStats, getAvailableResultTerms, getStudentResultsByTerm } from '../../utils/db';
+import { getStudentAttendanceStats, getAvailableResultTerms, getStudentResultsByTerm, getPsychomotor, getClassRemark, getAdminProfile } from '../../utils/db';
 
 const ResultSheet = () => {
   const navigate = useNavigate();
@@ -23,11 +23,12 @@ const ResultSheet = () => {
       const user = JSON.parse(userStr);
 
       // 1. Set Profile Basic Info
+      const fullName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Student";
       setStudentProfile({
         id: user.id,
-        name: user.name || "Student",
+        name: fullName,
         admNo: user.admission_number || "N/A",
-        class: user.classLevel || "N/A",
+        class: user.class_level || user.classLevel || "N/A",
         session: "2025/2026" // Default or fetch
       });
 
@@ -46,8 +47,13 @@ const ResultSheet = () => {
     // Fetch Specific Result
     const data = await getStudentResultsByTerm(studentProfile.id, selectedTerm);
     const attStats = await getStudentAttendanceStats(studentProfile.id);
+    const psychomotor = await getPsychomotor(studentProfile.id, selectedTerm);
+    const remark = await getClassRemark(studentProfile.class, selectedTerm); // Use profile class or fetch from DB if needed
 
-    setTermResult(data);
+    // Fetch Principal Signature (Admin Profile)
+    const adminProfile = await getAdminProfile();
+
+    setTermResult({ ...data, psychomotor, principalRemark: remark, signature: adminProfile.signature });
     setAttendanceStats(attStats);
     setViewState('report');
     setLoading(false);
@@ -230,10 +236,12 @@ const ResultSheet = () => {
             <h3 className="font-bold text-schoolGreen uppercase text-[10px] mb-1 border-b border-gray-300">Affective Domain</h3>
             <table className="w-full text-[10px] border border-gray-300">
               <tbody>
-                {['Punctuality', 'Neatness', 'Politeness', 'Honesty', 'Leadership'].map((item) => (
+                {['punctuality', 'neatness', 'politeness', 'honesty', 'leadership'].map((item) => (
                   <tr key={item} className="border-b border-gray-300">
-                    <td className="p-1 pl-2 font-bold text-gray-600">{item}</td>
-                    <td className="p-1 text-center font-bold">5</td>
+                    <td className="p-1 pl-2 font-bold text-gray-600 capitalize">{item}</td>
+                    <td className="p-1 text-center font-bold">
+                      {termResult?.psychomotor?.[item] || '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -253,11 +261,17 @@ const ResultSheet = () => {
         <div className="space-y-4 mt-8">
           <div className="border-b border-gray-300 pb-1">
             <span className="uppercase text-[10px] font-bold text-gray-500 mr-2">Principal's Remark:</span>
-            <span className="font-serif italic text-xs text-gray-800">Excellent performance. Keep it up!</span>
+            <span className="font-serif italic text-xs text-gray-800">{termResult?.principalRemark || "Excellent performance. Keep it up!"}</span>
           </div>
           <div className="flex justify-between items-end pt-4">
             <div className="text-center">
-              <div className="w-24 border-b border-black mb-1"></div>
+              {termResult?.signature ? (
+                <img src={termResult.signature} alt="Principal Signature" className="h-12 mx-auto mb-1" />
+              ) : (
+                <div className="h-12 flex items-end justify-center">
+                  <div className="w-24 border-b border-black mb-1"></div>
+                </div>
+              )}
               <p className="text-[10px] font-bold uppercase text-gray-500">Principal's Signature</p>
             </div>
             <div className="text-center">

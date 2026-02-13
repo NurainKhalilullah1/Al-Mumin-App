@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 // ... imports
-import { saveScore, getSubjects, getStudentsByClass, getClasses, getStaffByEmail, getScoresByContext } from '../../utils/db'; // Import helpers
+import { saveScore, getSubjects, getStudentsByClass, getClasses, getStaffByEmail, getScoresByContext, savePsychomotor, getPsychomotor } from '../../utils/db'; // Import helpers
 
 const ScoreSheet = () => {
   // --- STATE ---
@@ -14,6 +14,12 @@ const ScoreSheet = () => {
   const [inputs, setInputs] = useState({});
   const [loading, setLoading] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
+
+  // Psychomotor State
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [psychomotorScores, setPsychomotorScores] = useState({
+    punctuality: 5, neatness: 5, politeness: 5, honesty: 5, leadership: 5
+  });
 
   // 1. Initial Load: Classes & Subjects
   useEffect(() => {
@@ -135,6 +141,34 @@ const ScoreSheet = () => {
     alert(msg);
   };
 
+  const openPsychomotorModal = async (student) => {
+    setEditingStudent(student);
+    // Fetch existing
+    const existing = await getPsychomotor(student.id, activeTerm);
+    if (existing && existing.id) {
+      setPsychomotorScores({
+        punctuality: existing.punctuality || 5,
+        neatness: existing.neatness || 5,
+        politeness: existing.politeness || 5,
+        honesty: existing.honesty || 5,
+        leadership: existing.leadership || 5
+      });
+    } else {
+      setPsychomotorScores({ punctuality: 5, neatness: 5, politeness: 5, honesty: 5, leadership: 5 });
+    }
+  };
+
+  const savePsychomotorScores = async () => {
+    if (!editingStudent) return;
+    const { success } = await savePsychomotor(editingStudent.id, activeTerm, psychomotorScores);
+    if (success) {
+      alert(`Skills saved for ${editingStudent.name}`);
+      setEditingStudent(null);
+    } else {
+      alert("Failed to save skills");
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-500">
 
@@ -196,6 +230,7 @@ const ScoreSheet = () => {
               <th className="p-4 text-center">Mid-Term (20)</th>
               <th className="p-4 text-center">Exam (60)</th>
               <th className="p-4 text-center">Total</th>
+              <th className="p-4 text-center">Skills</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -244,13 +279,72 @@ const ScoreSheet = () => {
                     <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-blue-50/30" placeholder="-" value={sData.midTerm || ''} onChange={(e) => handleInputChange(student.id, 'midTerm', e.target.value)} /></td>
                     <td className="p-2 text-center"><input type="number" className="w-16 p-2 text-center border border-gray-200 rounded-lg outline-none focus:border-schoolGreen bg-yellow-50/30" placeholder="-" value={sData.exam || ''} onChange={(e) => handleInputChange(student.id, 'exam', e.target.value)} /></td>
                     <td className="p-4 text-center"><span className={`font-bold block py-1 px-3 rounded-lg ${total >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{total}</span></td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => openPsychomotorModal(student)}
+                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded-lg text-xs font-bold transition"
+                      >
+                        Rate Skills
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
           </tbody>
         </table>
       </div>
-    </div>
+
+
+      {/* PSYCHOMOTOR MODAL */}
+      {
+        editingStudent && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">Psychomotor Skills</h3>
+              <p className="text-sm text-gray-500 mb-6">Rate {editingStudent.name} (1-5)</p>
+
+              <div className="space-y-4">
+                {['punctuality', 'neatness', 'politeness', 'honesty', 'leadership'].map(skill => (
+                  <div key={skill} className="flex items-center justify-between">
+                    <label className="text-sm font-bold uppercase text-gray-600">{skill}</label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map(val => (
+                        <button
+                          key={val}
+                          onClick={() => setPsychomotorScores({ ...psychomotorScores, [skill]: val })}
+                          className={`w-8 h-8 rounded-full font-bold text-xs transition ${psychomotorScores[skill] === val
+                            ? 'bg-schoolGreen text-white scale-110 shadow-lg'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={() => setEditingStudent(null)}
+                  className="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={savePsychomotorScores}
+                  className="flex-1 py-3 bg-schoolGreen text-white font-bold rounded-xl shadow-lg hover:bg-schoolGold transition"
+                >
+                  Save Scores
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 };
 

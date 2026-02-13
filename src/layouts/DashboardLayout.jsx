@@ -232,7 +232,7 @@ const DashboardLayout = () => {
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg mb-2">
               <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
             </div>
-            <span className="font-serif font-bold text-lg tracking-wider text-white">Al-Mumin</span>
+            <span className="font-serif font-bold text-lg tracking-wider text-white">Al-Mumin Schools</span>
           </div>
           {/* Close Mobile Menu */}
           <button

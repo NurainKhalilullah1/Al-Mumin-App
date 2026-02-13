@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, CheckCircle, AlertTriangle, ArrowLeft, ArrowRight, Download, FileText } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
-import { getClasses, getClassResults, getSubjects, approveClassResults } from '../../utils/db';
+import { getClasses, getClassResults, getSubjects, approveClassResults, saveClassRemark, getClassRemark } from '../../utils/db';
 
 const AdminResults = () => {
     const notify = useToast();
@@ -14,6 +14,8 @@ const AdminResults = () => {
     const [classSubjects, setClassSubjects] = useState([]); // Store subjects for the selected class
 
     const [selectedTerm, setSelectedTerm] = useState('First Term');
+
+    const [principalRemark, setPrincipalRemark] = useState('');
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -80,7 +82,20 @@ const AdminResults = () => {
         realRows.sort((a, b) => b.avg - a.avg);
 
         setClassResults(realRows);
+        setClassResults(realRows);
+
+        // 5. Fetch Class Remark
+        const remark = await getClassRemark(selectedClass.name, selectedTerm);
+        setPrincipalRemark(remark || '');
     };
+
+    const handleSaveRemark = async () => {
+        const { success } = await saveClassRemark(selectedClass.name, selectedTerm, principalRemark);
+        if (success) notify.success("Principal's remark saved!");
+        else notify.error("Failed to save remark.");
+    };
+
+
 
     const handleClassClick = (cls) => {
         setSelectedClass(cls);
@@ -210,6 +225,28 @@ const AdminResults = () => {
                         </button>
                     </div>
 
+                    {/* PRINCIPAL REMARK SECTION */}
+                    <div className="bg-schoolGreen/5 p-6 rounded-2xl mb-8 border border-schoolGreen/20">
+                        <h3 className="font-bold text-schoolGreen mb-2 flex items-center">
+                            <FileText size={18} className="mr-2" /> Principal's General Remark for {selectedClass.name}
+                        </h3>
+                        <div className="flex gap-4">
+                            <input
+                                type="text"
+                                value={principalRemark}
+                                onChange={(e) => setPrincipalRemark(e.target.value)}
+                                placeholder="e.g. An excellent performance by the class..."
+                                className="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-schoolGreen outline-none"
+                            />
+                            <button
+                                onClick={handleSaveRemark}
+                                className="bg-schoolGreen text-white px-6 rounded-xl font-bold hover:bg-schoolGold transition shadow-lg"
+                            >
+                                Save Remark
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
                         <table className="w-full text-left whitespace-nowrap">
                             <thead className="bg-gray-50 text-xs uppercase font-bold text-gray-600 border-b border-gray-200">
@@ -220,6 +257,7 @@ const AdminResults = () => {
                                     ))}
                                     <th className="p-4 text-center bg-blue-50 text-blue-700 border-r border-gray-200">Average</th>
                                     <th className="p-4 text-center text-gray-700 border-r border-gray-200">Position</th>
+                                    <th className="p-4 text-center">Actions</th>
                                     <th className="p-4 text-center">Status</th>
                                 </tr>
                             </thead>
@@ -237,6 +275,9 @@ const AdminResults = () => {
                                         <td className="p-4 text-center font-bold text-blue-700 bg-blue-50/50 border-r border-blue-100">{res.avg}%</td>
                                         <td className="p-4 text-center font-bold border-r border-gray-100">{i + 1}</td>
                                         <td className="p-4 text-center">
+
+                                        </td>
+                                        <td className="p-4 text-center">
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${res.avg >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                                 }`}>
                                                 {res.avg >= 50 ? 'Passed' : 'Failed'}
@@ -246,7 +287,7 @@ const AdminResults = () => {
                                 ))}
                                 {classResults.length === 0 && (
                                     <tr>
-                                        <td colSpan={classSubjects.length + 4} className="p-8 text-center text-gray-400 italic">No students found in this class yet.</td>
+                                        <td colSpan={classSubjects.length + 5} className="p-8 text-center text-gray-400 italic">No students found in this class yet.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -255,6 +296,8 @@ const AdminResults = () => {
                 </div>
             )
             }
+
+
 
         </div >
     );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Bell, Lock, Save, Moon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
-import { getAdminProfile, saveAdminProfile, startNewSession, getAdminPreferences, saveAdminPreferences } from '../../utils/db'; // Import helpers
+import { getAdminProfile, saveAdminProfile, startNewSession, getAdminPreferences, saveAdminPreferences, supabase } from '../../utils/db'; // Import helpers
 
 const Settings = () => {
     const notify = useToast();
@@ -10,8 +10,9 @@ const Settings = () => {
 
     // Profile State
     const [profile, setProfile] = useState({
-        name: '', email: '', phone: '', role: ''
+        name: '', email: '', phone: '', role: '', signature: null
     });
+    const [uploading, setUploading] = useState(false);
 
     // Preferences State
     const [preferences, setPreferences] = useState({
@@ -41,7 +42,35 @@ const Settings = () => {
 
     const handleSaveProfile = async () => {
         await saveAdminProfile(profile);
-        notify.success("Profile updated successfully!");
+        notify.success("Profile & Signature updated successfully!");
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const fileName = `signature-${Date.now()}.png`;
+            const { data, error } = await supabase.storage
+                .from('payment-proofs') // Reusing existing bucket or create 'signatures'
+                .upload(fileName, file);
+
+            if (error) throw error;
+
+            // Get Public URL
+            const { data: publicData } = supabase.storage
+                .from('payment-proofs')
+                .getPublicUrl(fileName);
+
+            setProfile({ ...profile, signature: publicData.publicUrl });
+            notify.success("Signature uploaded!");
+        } catch (error) {
+            console.error("Upload Error:", error);
+            notify.error("Failed to upload signature");
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleSavePreferences = async (key) => {
@@ -128,6 +157,40 @@ const Settings = () => {
                                 <FormInput label="Email Address" value={profile.email} onChange={(val) => setProfile({ ...profile, email: val })} />
                                 <FormInput label="Phone Number" value={profile.phone} onChange={(val) => setProfile({ ...profile, phone: val })} />
                                 <FormInput label="Role" value={profile.role} disabled />
+                                <FormInput label="Role" value={profile.role} disabled />
+                            </div>
+
+                            {/* SIGNATURE UPLOAD */}
+                            <div className="border-t border-gray-100 pt-6 mt-2">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4">Principal's Signature</h3>
+                                <div className="flex items-center gap-6">
+                                    <div className="w-40 h-20 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50 relative overflow-hidden group">
+                                        {profile.signature ? (
+                                            <img src={profile.signature} alt="Signature" className="w-full h-full object-contain" />
+                                        ) : (
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase">No Signature</p>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                            <label htmlFor="sig-upload" className="text-white text-xs font-bold cursor-pointer underline">Change</label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="sig-upload"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                        />
+                                        <label
+                                            htmlFor="sig-upload"
+                                            className={`bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-50 cursor-pointer transition ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                        >
+                                            {uploading ? 'Uploading...' : 'Upload Signature Image'}
+                                        </label>
+                                        <p className="text-[10px] text-gray-400 mt-2">Recommended: PNG with transparent background.</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="pt-4">

@@ -47,6 +47,50 @@ export const getClasses = async () => {
   }));
 };
 
+// --- ADMIN MANAGEMENT (NEW) ---
+export const getAdminProfile = async () => {
+  // Assuming single admin or auth user is admin
+  // For now, fetch the first admin or current user
+  const user = JSON.parse(localStorage.getItem('currentUser'));
+  // If no auth, return mock
+  if (!user) return { name: 'Admin User', email: 'admin@almumin.com', phone: '', role: 'Administrator', signature: null };
+
+  // Try fetching from 'admins' table if exists
+  const { data, error } = await supabase.from('admins').select('*').limit(1).maybeSingle();
+  if (data) return { ...data, signature: data.signature_url };
+
+  return { name: 'Admin User', email: 'admin@almumin.com', phone: '', role: 'Administrator', signature: null };
+};
+
+export const saveAdminProfile = async (profileData) => {
+  // Check if admins table exists/has data
+  const { data: existing } = await supabase.from('admins').select('id').limit(1).maybeSingle();
+
+  const payload = {
+    name: profileData.name,
+    email: profileData.email,
+    phone: profileData.phone,
+    signature_url: profileData.signature
+  };
+
+  if (existing) {
+    await supabase.from('admins').update(payload).eq('id', existing.id);
+  } else {
+    await supabase.from('admins').insert([payload]);
+  }
+};
+
+export const getAdminPreferences = async () => {
+  return JSON.parse(localStorage.getItem('adminPrefs')) || {
+    emailNotifications: true, smsAlerts: false, newsletter: true, notifyTeachers: true
+  };
+};
+
+export const saveAdminPreferences = async (prefs) => {
+  localStorage.setItem('adminPrefs', JSON.stringify(prefs));
+};
+
+
 export const getStaffByEmail = async (email) => {
   const { data, error } = await supabase.from('staff').select('*').eq('email', email).single();
   if (error) return null;
@@ -352,6 +396,68 @@ export const getScoresByContext = async (className, subject, term) => {
 
   return data;
 };
+
+// --- PSYCHOMOTOR & REMARKS (NEW) ---
+
+export const savePsychomotor = async (studentId, term, scores) => {
+  // scores = { punctuality: 5, neatness: 4, ... }
+  const { data, error } = await supabase
+    .from('student_psychomotor')
+    .upsert({
+      student_id: studentId,
+      term,
+      ...scores
+    }, { onConflict: 'student_id, term' })
+    .select();
+
+  if (error) {
+    console.error("Error saving psychomotor:", error);
+    return { success: false, error };
+  }
+  return { success: true, data };
+};
+
+export const getPsychomotor = async (studentId, term) => {
+  const { data, error } = await supabase
+    .from('student_psychomotor')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('term', term)
+    .maybeSingle();
+
+  if (error) console.error("Error fetching psychomotor:", error);
+  return data || {};
+};
+
+export const saveClassRemark = async (className, term, remark) => {
+  const { data, error } = await supabase
+    .from('class_remarks')
+    .upsert({
+      class_name: className,
+      term,
+      remark
+    }, { onConflict: 'class_name, term' })
+    .select();
+
+  if (error) {
+    console.error("Error saving class remark:", error);
+    return { success: false, error };
+  }
+  return { success: true, data };
+};
+
+export const getClassRemark = async (className, term) => {
+  const { data, error } = await supabase
+    .from('class_remarks')
+    .select('remark')
+    .eq('class_name', className)
+    .eq('term', term)
+    .maybeSingle();
+
+  if (error) console.error("Error fetching class remark:", error);
+  return data?.remark || null;
+};
+
 
 // --- LESSON NOTES (NEW) ---
 
@@ -1363,40 +1469,7 @@ export const getStudentFeeStatus = async (studentId) => {
   };
 };
 
-// --- ADMIN PROFILE MANAGEMENT (ASYNC) ---
-export const getAdminProfile = async () => {
-  const { data } = await supabase.from('admin_settings').select('value').eq('key', 'profile').maybeSingle();
-  if (!data) {
-    return {
-      name: "Administrator",
-      email: "admin@almumin.com",
-      phone: "",
-      role: "Principal"
-    };
-  }
-  return data.value;
-};
 
-export const saveAdminProfile = async (profile) => {
-  await supabase.from('admin_settings').upsert({ key: 'profile', value: profile });
-};
-
-export const getAdminPreferences = async () => {
-  const { data } = await supabase.from('admin_settings').select('value').eq('key', 'preferences').maybeSingle();
-  if (!data) {
-    return {
-      emailNotifications: true,
-      smsAlerts: false,
-      newsletter: true,
-      notifyTeachers: true
-    };
-  }
-  return { notifyTeachers: true, ...data.value }; // Default notifyTeachers to true if missing
-};
-
-export const saveAdminPreferences = async (prefs) => {
-  await supabase.from('admin_settings').upsert({ key: 'preferences', value: prefs });
-};
 
 
 // --- BULK ADMISSION (NEW) ---
