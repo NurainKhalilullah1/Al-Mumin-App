@@ -15,7 +15,7 @@ const Settings = () => {
 
     // Preferences State
     const [preferences, setPreferences] = useState({
-        emailNotifications: true, smsAlerts: false, newsletter: true
+        emailNotifications: true, smsAlerts: false, newsletter: true, notifyTeachers: true
     });
 
     // Password State
@@ -160,6 +160,14 @@ const Settings = () => {
                                     checked={preferences.newsletter}
                                     onChange={() => handleSavePreferences('newsletter')}
                                 />
+                                <div className="border-t border-gray-100 my-4 pt-4">
+                                    <Toggle
+                                        label="Notify Class Teachers on Payment"
+                                        desc="When a student pays, send a notification to their class teacher."
+                                        checked={preferences.notifyTeachers}
+                                        onChange={() => handleSavePreferences('notifyTeachers')}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}

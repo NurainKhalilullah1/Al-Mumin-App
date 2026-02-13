@@ -1266,6 +1266,33 @@ export const savePayment = async (paymentData) => {
     supabase.from('notifications').insert([notifPayload]).then(({ error }) => {
       if (error) console.warn("Notification insert failed:", error);
     });
+
+    // --- NOTIFY CLASS TEACHER (IF ENABLED) ---
+    // Fire and forget to avoid slowing down payment
+    (async () => {
+      try {
+        const prefs = await getAdminPreferences();
+        if (prefs.notifyTeachers && paymentData.classLevel) {
+          // Find teacher for this class
+          const { data: teacher } = await supabase.from('staff')
+            .select('id, name')
+            .eq('assigned_class', paymentData.classLevel)
+            .maybeSingle();
+
+          if (teacher) {
+            await supabase.from('notifications').insert([{
+              user_id: teacher.id,
+              message: `Payment Received: ${paymentData.studentName} (${paymentData.classLevel}) paid ₦${Number(paymentData.amount).toLocaleString()}`,
+              type: 'payment',
+              read: false,
+              created_at: new Date().toISOString()
+            }]);
+          }
+        }
+      } catch (err) {
+        console.warn("Teacher notification error:", err);
+      }
+    })();
   }
 
   if (error) {
@@ -1360,10 +1387,11 @@ export const getAdminPreferences = async () => {
     return {
       emailNotifications: true,
       smsAlerts: false,
-      newsletter: true
+      newsletter: true,
+      notifyTeachers: true
     };
   }
-  return data.value;
+  return { notifyTeachers: true, ...data.value }; // Default notifyTeachers to true if missing
 };
 
 export const saveAdminPreferences = async (prefs) => {
