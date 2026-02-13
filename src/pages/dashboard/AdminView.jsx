@@ -109,7 +109,12 @@ const AdminView = () => {
                     }
                     title={act.title}
                     desc={act.desc}
-                    time={new Date(act.time).toLocaleDateString()}
+                    time={
+                      // Check if time is a valid date string before formatting
+                      !isNaN(Date.parse(act.time))
+                        ? new Date(act.time).toLocaleDateString()
+                        : act.time // Return primitive string like 'Recently' or 'Just now'
+                    }
                   />
                 ))
               )}

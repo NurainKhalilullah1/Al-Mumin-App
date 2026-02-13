@@ -773,6 +773,7 @@ export const saveStudent = async (studentData) => {
     first_name: firstName,
     last_name: lastName,
     current_class_id: classId,
+    class_level: studentData.classLevel, // Explicitly save text class level
     gender: gender,
     parent_phone: studentData.parentPhone || '',
     assigned_fee: studentData.assignedFee || 0, // Save student specific fee
@@ -880,12 +881,18 @@ export const saveStudent = async (studentData) => {
         // Simpler retry:
         const year = new Date().getFullYear();
         // Just try once cleanly
-        const { error: retryError } = await supabase.from('students').insert([{
-          ...payload,
+        const retryPayload = {
+          first_name: firstName,
+          last_name: lastName,
+          current_class_id: classId,
+          class_level: studentData.classLevel, // Explicitly save text class level
+          gender: gender,
+          parent_phone: studentData.parentPhone || '',
           admission_number: `AMS/${year}/RETRY-${Date.now()}`, // Fallback ID to avoid collision on simple retry
           password: `${lastName.toLowerCase()}123`,
           is_active: true
-        }]);
+        };
+        const { error: retryError } = await supabase.from('students').insert([retryPayload]);
         if (retryError) { console.error(retryError); return { success: false, error: retryError }; }
         return { success: true, warning: 'Saved without partial data due to schema mismatch.' };
       }
@@ -1287,14 +1294,16 @@ export const rejectPayment = async (id) => {
 };
 
 export const getStudentFeeStatus = async (studentId) => {
-  // 1. Get Student Info for Class Level & Assigned Fee
-  // 1. Get Student Info (select * is safer against missing columns than explicit list which errors)
-  const { data: student } = await supabase.from('students').select('*').eq('id', studentId).single();
+  // 1. Get Student Info (Join classes to get name if class_level is missing)
+  const { data: student } = await supabase.from('students').select('*, classes(name)').eq('id', studentId).single();
   if (!student) return { totalFee: 0, totalPaid: 0, outstanding: 0, status: 'Unknown' };
 
   // 2. Get Total Fee (Use explicit student fee if set, otherwise class default)
   const fees = getSchoolFees();
-  const classFee = fees[student.class_level] || 150000;
+  // Resolve class name: Use text column OR joined class name OR 'N/A'
+  const resolvedClass = student.class_level || (student.classes && student.classes.name) || 'N/A';
+
+  const classFee = fees[resolvedClass] || 150000;
   const totalFee = (student.assigned_fee && student.assigned_fee > 0) ? student.assigned_fee : classFee;
 
   // 3. Get Payments
@@ -1323,7 +1332,7 @@ export const getStudentFeeStatus = async (studentId) => {
     outstanding: Math.max(0, outstanding),
     status,
     studentName: student.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Student', // Return updated name
-    classLevel: student.class_level || student.assigned_class || 'N/A' // Return valid class
+    classLevel: resolvedClass // Return fully resolved class
   };
 };
 
