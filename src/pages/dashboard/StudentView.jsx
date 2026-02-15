@@ -111,6 +111,9 @@ const StudentView = () => {
           <button onClick={() => navigate('/portal/timetable')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none col-span-2 md:col-span-1">
             Timetable
           </button>
+          <button onClick={() => navigate('/portal/student-settings')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none col-span-2 md:col-span-1">
+            Settings
+          </button>
         </div>
       </div>
 

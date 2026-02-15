@@ -36,6 +36,8 @@ import NoticeBoard from './pages/dashboard/NoticeBoard';
 import AdminPayments from './pages/dashboard/AdminPayments'; // <--- NEW IMPORT
 import StudentPayments from './pages/dashboard/StudentPayments'; // <--- NEW IMPORT
 import StaffAdmission from './pages/dashboard/StaffAdmission'; // <--- NEW IMPORT
+import StaffAdmission from './pages/dashboard/StaffAdmission'; // <--- NEW IMPORT
+import StudentSettings from './pages/dashboard/StudentSettings'; // <--- NEW IMPORT
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -97,6 +99,7 @@ function App() {
 
               {/* --- STUDENT ROUTES --- */}
               <Route path="student-payments" element={<StudentPayments />} />
+              <Route path="student-settings" element={<StudentSettings />} />
 
             </Route>
           </Route>

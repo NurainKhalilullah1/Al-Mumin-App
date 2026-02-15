@@ -28,8 +28,9 @@ const ResultSheet = () => {
         id: user.id,
         name: fullName,
         admNo: user.admission_number || "N/A",
-        class: user.class_level || user.classLevel || "N/A",
-        session: "2025/2026" // Default or fetch
+        class: user.class_level || user.current_class_id || "N/A", // Use 'class_level' as primary
+        session: "2025/2026",
+        passport: user.passport_url // <--- Add Passport
       });
 
       // 2. Fetch Available Terms from DB
@@ -158,12 +159,16 @@ const ResultSheet = () => {
         <div className="flex items-center justify-between border-b-4 border-schoolGreen pb-4 mb-6">
           <img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain" />
           <div className="text-center">
-            <h1 className="font-serif font-bold text-2xl text-schoolGreen uppercase tracking-wide">Al-Mumin College</h1>
+            <h1 className="font-serif font-bold text-2xl text-schoolGreen uppercase tracking-wide">Al-Mumin Schools</h1>
             <p className="text-gray-600 text-xs font-bold tracking-widest uppercase mt-1">Seeking Knowledge From Cradle To Grave</p>
-            <p className="text-[10px] text-gray-500 mt-1">12, Al-Mumin Avenue, GRA, Ilorin.</p>
+            <p className="text-[10px] text-gray-500 mt-1">12, Al-Mumin Avenue, Mao Junction, Kola Lagos.</p>
           </div>
-          <div className="w-20 h-20 bg-gray-100 border border-gray-300 flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase text-center p-1">
-            Passport
+          <div className="w-20 h-20 bg-gray-100 border border-gray-300 flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase text-center p-1 overflow-hidden">
+            {studentProfile?.passport ? (
+              <img src={studentProfile.passport} alt="Student" className="w-full h-full object-cover" />
+            ) : (
+              <span>Passport</span>
+            )}
           </div>
         </div>
 
