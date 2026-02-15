@@ -26,8 +26,16 @@ const Login = () => {
 
         if (error) throw error;
 
-        notify.success("Welcome back, Admin!");
-        localStorage.setItem('userRole', 'admin'); // <--- Fix: Set Role
+        // Fetch Admin Profile to get Name
+        const { data: adminProfile } = await supabase.from('admins').select('*').limit(1).maybeSingle();
+
+        const adminName = adminProfile?.name || 'Administrator';
+        notify.success(`Welcome back, ${adminName}!`);
+
+        localStorage.setItem('userRole', 'admin');
+        // Save full profile to currentUser so DashboardLayout can use it
+        localStorage.setItem('currentUser', JSON.stringify(adminProfile || { name: 'Administrator', role: 'Admin' }));
+
         navigate('/portal/dashboard');
       }
       else if (role === 'student') {
