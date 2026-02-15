@@ -7,6 +7,7 @@ const saveDB = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
 // src/utils/db.js
 import { supabase } from '../supabaseClient';
+export { supabase };
 
 // --- CLASS MANAGEMENT (ASYNC) ---
 export const getClasses = async () => {
