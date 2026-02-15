@@ -5,9 +5,11 @@ import {
   FileText, CheckCircle, Award
 } from 'lucide-react';
 import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats, getStudentFeeStatus, getDailyAdheeth } from '../../utils/db'; // <--- IMPORT DB
+import { useToast } from '../../components/ToastProvider'; // <--- NEW IMPORT
 
 const StudentView = () => {
   const navigate = useNavigate();
+  const notify = useToast(); // <--- INIT TOAST
 
   // State for Real Data
   const [assignmentList, setAssignmentList] = useState([]);
@@ -42,6 +44,11 @@ const StudentView = () => {
         const user = JSON.parse(userStr);
         setStudentName(user.name || `${user.first_name} ${user.last_name}` || 'Student');
         setStudentClass(user.classLevel || user.current_class_id || ''); // Add fallback logic here if needed
+
+        // CHECK PASSPORT
+        if (!user.passport_url) {
+          notify.error("Action Required: Please upload your passport photo in Settings.");
+        }
 
         // Fetch real attendance
         const attStats = await getStudentAttendanceStats(user.id);

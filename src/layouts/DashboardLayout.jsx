@@ -79,14 +79,24 @@ const DashboardLayout = () => {
           title: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.name || 'Administrator',
           sub: profile.role || 'Admin Access',
           badge: 'A',
-          color: 'bg-schoolGreen'
+          color: 'bg-schoolGreen',
+          avatar: profile.passport_url // <--- Add Avatar
         });
       } else if (userRole === 'teacher') {
+        // Fetch latest staff profile
+        const { getStaffByEmail } = await import('../utils/db');
+        let staffProfile = storedUser;
+        if (storedUser.email) {
+          const fresh = await getStaffByEmail(storedUser.email);
+          if (fresh) staffProfile = fresh;
+        }
+
         setDisplayUser({
-          title: storedUser.name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || 'Staff Member',
-          sub: storedUser.subject || storedUser.role || 'Teacher',
+          title: staffProfile.name || `${staffProfile.first_name || ''} ${staffProfile.last_name || ''}`.trim() || 'Staff Member',
+          sub: staffProfile.subject || staffProfile.role || 'Teacher',
           badge: 'T',
-          color: 'bg-blue-600'
+          color: 'bg-blue-600',
+          avatar: staffProfile.passport_url
         });
       } else {
         // Student - Resolve Class Name if missing
@@ -113,11 +123,24 @@ const DashboardLayout = () => {
           title: storedUser.name || `${storedUser.first_name || ''} ${storedUser.last_name || ''}`.trim() || 'Student',
           sub: className || storedUser.department || 'Student Access',
           badge: 'S',
-          color: 'bg-schoolGold'
+          color: 'bg-schoolGold',
+          avatar: storedUser.passport_url
         });
       }
+
     };
-    loadUser();
+    loadUser(); // Load immediately
+
+    // Listen for storage events to update avatar immediately across tabs/components
+    const handleStorageChange = () => loadUser();
+    window.addEventListener('storage', handleStorageChange);
+    // Custom event for same-tab updates
+    window.addEventListener('user-updated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-updated', handleStorageChange);
+    };
   }, [userRole]);
 
   const currentUser = displayUser;
@@ -271,8 +294,8 @@ const DashboardLayout = () => {
         {/* User Profile Mini & Logout */}
         <div className="p-4 bg-black/20 m-4 rounded-2xl border border-white/5">
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-lg ${currentUser.color}`}>
-              {currentUser.badge}
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-lg ${currentUser.color} overflow-hidden`}>
+              {currentUser.avatar ? <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" /> : currentUser.badge}
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-white truncate">{currentUser.title}</p>

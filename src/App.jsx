@@ -44,71 +44,83 @@ const ScrollToTop = () => {
 };
 
 
+import useInactivity from './hooks/useInactivity'; // <--- Import Hook
+
 function App() {
   const isNative = Capacitor.isNativePlatform();
 
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <ScrollToTop />
-        <Routes>
-          {/* ... routes ... */}
-          {/* --- PUBLIC WEBSITE ROUTES --- */}
-          {/* Redirect to Login if on Mobile App, else show Landing Page */}
-          <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/admissions" element={<Admissions />} />
-          <Route path="/gallery" element={<Gallery />} />
-
-          <Route path="/login" element={<Login />} />
-
-          {/* --- PROTECTED DASHBOARD ROUTES --- */}
-          <Route path="/portal" element={<ProtectedRoute />}> {/* Base Login Check */}
-            <Route element={<DashboardLayout />}>
-
-              {/* COMMON: Dashboard Home (Handles View Switching) */}
-              <Route path="dashboard" element={<DashboardHome />} />
-              <Route path="noticeboard" element={<NoticeBoard />} />
-              <Route path="timetable" element={<StudentTimetable />} />
-              <Route path="result-sheet" element={<ResultSheet />} />
-              <Route path="lesson-notes" element={<LessonNotes />} />
-              <Route path="assignments" element={<Assignments />} />
-
-              {/* --- ADMIN ONLY ROUTES --- */}
-              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route path="students" element={<AdminStudents />} />
-                <Route path="results" element={<AdminResults />} />
-                <Route path="admin-classes" element={<AdminClasses />} />
-                <Route path="admin-subjects" element={<AdminSubjects />} />
-                <Route path="staff" element={<Staff />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="admin-notices" element={<AdminNotices />} />
-                <Route path="admissions" element={<AdminAdmissions />} />
-                <Route path="admin-payments" element={<AdminPayments />} />
-              </Route>
-
-              {/* --- STAFF/TEACHER ROUTES --- */}
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'staff']} />}>
-                <Route path="staff-classes" element={<StaffClasses />} />
-                <Route path="staff-subjects" element={<StaffSubjects />} />
-                <Route path="classes" element={<MyClasses />} />
-                <Route path="scores" element={<ScoreSheet />} />
-                <Route path="staff-admission" element={<StaffAdmission />} />
-              </Route>
-
-              {/* --- STUDENT ROUTES --- */}
-              <Route path="student-payments" element={<StudentPayments />} />
-              <Route path="student-settings" element={<StudentSettings />} />
-
-            </Route>
-          </Route>
-
-          {/* 404 - Page Not Found */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </ToastProvider>
+      <AppContent isNative={isNative} />
     </BrowserRouter>
   );
 }
+
+// Separate component to use hooks inside Router
+const AppContent = ({ isNative }) => {
+  useInactivity(); // <--- Activate Hook
+
+  return (
+    <ToastProvider>
+      <ScrollToTop />
+      <Routes>
+        {/* ... routes ... */}
+        {/* --- PUBLIC WEBSITE ROUTES --- */}
+        {/* Redirect to Login if on Mobile App, else show Landing Page */}
+        <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/admissions" element={<Admissions />} />
+        <Route path="/gallery" element={<Gallery />} />
+
+        <Route path="/login" element={<Login />} />
+
+        {/* --- PROTECTED DASHBOARD ROUTES --- */}
+        <Route path="/portal" element={<ProtectedRoute />}> {/* Base Login Check */}
+          <Route element={<DashboardLayout />}>
+
+            {/* COMMON: Dashboard Home (Handles View Switching) */}
+            <Route path="dashboard" element={<DashboardHome />} />
+            <Route path="noticeboard" element={<NoticeBoard />} />
+            <Route path="timetable" element={<StudentTimetable />} />
+            <Route path="result-sheet" element={<ResultSheet />} />
+            <Route path="lesson-notes" element={<LessonNotes />} />
+            <Route path="assignments" element={<Assignments />} />
+
+            {/* --- ADMIN ONLY ROUTES --- */}
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="students" element={<AdminStudents />} />
+              <Route path="results" element={<AdminResults />} />
+              <Route path="admin-classes" element={<AdminClasses />} />
+              <Route path="admin-subjects" element={<AdminSubjects />} />
+              <Route path="staff" element={<Staff />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="admin-notices" element={<AdminNotices />} />
+              <Route path="admissions" element={<AdminAdmissions />} />
+              <Route path="admin-payments" element={<AdminPayments />} />
+            </Route>
+
+            {/* --- STAFF/TEACHER ROUTES --- */}
+            <Route element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'staff']} />}>
+              <Route path="staff-classes" element={<StaffClasses />} />
+              <Route path="staff-subjects" element={<StaffSubjects />} />
+              <Route path="classes" element={<MyClasses />} />
+              <Route path="scores" element={<ScoreSheet />} />
+              <Route path="staff-admission" element={<StaffAdmission />} />
+            </Route>
+
+            {/* --- STUDENT ROUTES --- */}
+            <Route path="student-payments" element={<StudentPayments />} />
+            <Route path="student-settings" element={<StudentSettings />} />
+
+          </Route>
+        </Route>
+
+        {/* 404 - Page Not Found */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ToastProvider>
+
+  );
+};
 
 export default App;

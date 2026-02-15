@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentAttendanceStats, getAvailableResultTerms, getStudentResultsByTerm, getPsychomotor, getClassRemark, getAdminProfile } from '../../utils/db';
+import { getStudentAttendanceStats, getAvailableResultTerms, getStudentResultsByTerm, getPsychomotor, getClassRemark, getAdminProfile, getClasses } from '../../utils/db';
 
 const ResultSheet = () => {
   const navigate = useNavigate();
@@ -23,12 +23,23 @@ const ResultSheet = () => {
       const user = JSON.parse(userStr);
 
       // 1. Set Profile Basic Info
+      let className = user.classLevel || user.current_class_id || "N/A";
+
+      // Resolve Class Name if ID
+      if (!isNaN(className) && className !== "N/A") {
+        try {
+          const classes = await getClasses();
+          const found = classes.find(c => c.id == className);
+          if (found) className = found.name;
+        } catch (e) { console.error("Class fetch error", e); }
+      }
+
       const fullName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || "Student";
       setStudentProfile({
         id: user.id,
         name: fullName,
         admNo: user.admission_number || "N/A",
-        class: user.class_level || user.current_class_id || "N/A", // Use 'class_level' as primary
+        class: className, // Use resolved name
         session: "2025/2026",
         passport: user.passport_url // <--- Add Passport
       });

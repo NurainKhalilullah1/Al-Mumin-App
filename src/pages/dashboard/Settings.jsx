@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Lock, Save, Moon, RefreshCw, AlertTriangle } from 'lucide-react';
+import { User, Bell, Lock, Save, Moon, RefreshCw, AlertTriangle, Camera } from 'lucide-react';
 import { useToast } from '../../components/ToastProvider';
 import { getAdminProfile, saveAdminProfile, startNewSession, getAdminPreferences, saveAdminPreferences, supabase } from '../../utils/db'; // Import helpers
 
@@ -10,7 +10,7 @@ const Settings = () => {
 
     // Profile State
     const [profile, setProfile] = useState({
-        name: '', email: '', phone: '', role: '', signature: null
+        name: '', email: '', phone: '', role: '', signature: null, passport: null
     });
     const [uploading, setUploading] = useState(false);
 
@@ -33,7 +33,7 @@ const Settings = () => {
             setLoading(true);
             const prof = await getAdminProfile();
             const prefs = await getAdminPreferences();
-            setProfile(prof);
+            setProfile({ ...prof, passport: prof.passport_url }); // Map passport_url
             setPreferences(prefs);
             setLoading(false);
         };
@@ -45,29 +45,55 @@ const Settings = () => {
         notify.success("Profile & Signature updated successfully!");
     };
 
-    const handleFileUpload = async (e) => {
+    const handleFileUpload = async (e, type) => { // type = 'signature' or 'passport'
         const file = e.target.files[0];
         if (!file) return;
 
         setUploading(true);
         try {
-            const fileName = `signature-${Date.now()}.png`;
+            const bucket = type === 'passport' ? 'passports' : 'payment-proofs'; // Reusing buckets
+            const fileName = `${type}-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+
             const { data, error } = await supabase.storage
-                .from('payment-proofs') // Reusing existing bucket or create 'signatures'
+                .from(bucket)
                 .upload(fileName, file);
 
             if (error) throw error;
 
-            // Get Public URL
             const { data: publicData } = supabase.storage
-                .from('payment-proofs')
+                .from(bucket)
                 .getPublicUrl(fileName);
 
-            setProfile({ ...profile, signature: publicData.publicUrl });
-            notify.success("Signature uploaded!");
+            const publicUrl = publicData.publicUrl;
+
+            // Update State
+            if (type === 'passport') {
+                setProfile(prev => ({ ...prev, passport: publicUrl }));
+
+                // Update LocalStorage for immediate header reflect
+                const userStr = localStorage.getItem('currentUser');
+                if (userStr) {
+                    const u = JSON.parse(userStr);
+                    u.passport_url = publicUrl;
+                    localStorage.setItem('currentUser', JSON.stringify(u));
+                    // Force event dispatch to notify header if strictly needed, or wait for refresh
+                }
+
+                // AUTO SAVE for Passport
+                const { data: existing } = await supabase.from('admins').select('id').limit(1).maybeSingle();
+                if (existing) {
+                    await supabase.from('admins').update({ passport_url: publicUrl }).eq('id', existing.id);
+                }
+                notify.success("Passport updated! Refresh page to see changes in header.");
+
+            } else {
+                setProfile(prev => ({ ...prev, signature: publicUrl }));
+                notify.success("Signature uploaded! Click Save to apply changes.");
+            }
+
         } catch (error) {
             console.error("Upload Error:", error);
-            notify.error("Failed to upload signature");
+            notify.error(`Failed to upload ${type}`);
         } finally {
             setUploading(false);
         }
@@ -143,12 +169,26 @@ const Settings = () => {
                             <h2 className="text-xl font-bold text-gray-800 border-b border-gray-100 pb-4">Personal Information</h2>
 
                             <div className="flex items-center gap-6 mb-8">
-                                <div className="w-24 h-24 rounded-full bg-schoolGreen text-white flex items-center justify-center text-3xl font-serif font-bold">
-                                    {profile.name.charAt(0)}
+                                <div className="w-24 h-24 rounded-full bg-schoolGreen text-white flex items-center justify-center text-3xl font-serif font-bold overflow-hidden relative">
+                                    {profile.passport ? (
+                                        <img src={profile.passport} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        profile.name.charAt(0)
+                                    )}
                                 </div>
                                 <div>
-                                    <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase cursor-not-allowed opacity-60">Change Avatar</button>
-                                    <p className="text-xs text-gray-400 mt-2">Coming Soon</p>
+                                    {/* PASSPORT UPLOAD */}
+                                    <input
+                                        type="file"
+                                        id="passport-upload-admin"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleFileUpload(e, 'passport')}
+                                    />
+                                    <label htmlFor="passport-upload-admin" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase cursor-pointer hover:bg-gray-200 block text-center">
+                                        {uploading ? 'Uploading...' : 'Change Avatar'}
+                                    </label>
+                                    <p className="text-xs text-gray-400 mt-2">Recommended: Square JPG/PNG</p>
                                 </div>
                             </div>
 
@@ -156,7 +196,6 @@ const Settings = () => {
                                 <FormInput label="Full Name" value={profile.name} onChange={(val) => setProfile({ ...profile, name: val })} />
                                 <FormInput label="Email Address" value={profile.email} onChange={(val) => setProfile({ ...profile, email: val })} />
                                 <FormInput label="Phone Number" value={profile.phone} onChange={(val) => setProfile({ ...profile, phone: val })} />
-                                <FormInput label="Role" value={profile.role} disabled />
                                 <FormInput label="Role" value={profile.role} disabled />
                             </div>
 
@@ -180,7 +219,7 @@ const Settings = () => {
                                             id="sig-upload"
                                             accept="image/*"
                                             className="hidden"
-                                            onChange={handleFileUpload}
+                                            onChange={(e) => handleFileUpload(e, 'signature')}
                                         />
                                         <label
                                             htmlFor="sig-upload"
