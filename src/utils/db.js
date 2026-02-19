@@ -1139,20 +1139,33 @@ export const saveStaff = async (staffData) => {
 };
 
 export const deleteStaff = async (id) => {
-  // 1. Get Staff Name first (to check if they are a Form Teacher)
-  const { data: staff } = await supabase.from('staff').select('name').eq('id', id).single();
+  // 1. Get Staff Name first (to check if they are a Form Teacher or Subject Teacher)
+  const { data: staff } = await supabase.from('staff').select('name, email').eq('id', id).single();
 
   if (staff && staff.name) {
-    // 2. Unassign from Classes
-    const { error: updateError } = await supabase
+    // 2. Unassign from Classes (Form Teacher)
+    const { error: classError } = await supabase
       .from('classes')
       .update({ form_teacher: null })
       .eq('form_teacher', staff.name);
 
-    if (updateError) console.warn("Failed to unassign class from staff:", updateError);
+    if (classError) console.warn("Failed to unassign class from staff:", classError);
+
+    // 3. Unassign from Subjects (Subject Teacher)
+    const { error: subjectError } = await supabase
+      .from('subjects')
+      .update({ teacher: 'Unassigned' }) // or null, depending on schema. 'Unassigned' is safer for UI.
+      .eq('teacher', staff.name);
+
+    if (subjectError) console.warn("Failed to unassign subject from staff:", subjectError);
   }
 
-  // 3. Delete Staff
+  // 4. Delete Notifications (Cleanup)
+  if (id) {
+     await supabase.from('notifications').delete().eq('user_id', id);
+  }
+  
+  // 5. Delete Staff
   const { error } = await supabase.from('staff').delete().eq('id', id);
   if (error) console.error(error);
 };
@@ -1695,7 +1708,7 @@ export const getRecentActivities = async () => {
 
 // --- STAFF DASHBOARD HELPERS ---
 
-export const getStaffStats = async (staffName) => {
+export const getStaffStats = async (staffName, staffSubject = null) => {
   // 1. My Classes Count (Where form_teacher matches)
   const { count: classCount } = await supabase
     .from('classes')
@@ -1703,44 +1716,61 @@ export const getStaffStats = async (staffName) => {
     .eq('form_teacher', staffName);
 
   // 2. Pending Results (Uploaded by this staff, still pending)
-  // Assuming 'uploaded_by' or similar exists, or simply count all pending for now if ownership not strict
-  // For better accuracy, we'd need a 'teacher' column in results table. 
-  // Falling back to: Count of subjects assigned to this teacher (if we had that map).
-  // For now, let's fetch "My Pending Uploads" if we had that tracking.
-  // We'll stick to a generic "Pending Approvals" for the school for now or 0.
-  const { count: pendingCount } = await supabase
-    .from('results')
-    .select('*', { count: 'exact', head: true })
-    .eq('approval_status', 'Pending');
+  // Filtering by Subject if available, otherwise general pending count (fallback)
+  let pendingCount = 0;
+  if (staffSubject) {
+      const { count } = await supabase
+        .from('results')
+        .select('*', { count: 'exact', head: true })
+        .eq('approval_status', 'Pending')
+        .eq('subject', staffSubject);
+      pendingCount = count || 0;
+  } else {
+      // Fallback: If no subject assigned, maybe show 0 or all? 
+      // Showing 0 is safer to avoid confusion.
+      pendingCount = 0; 
+  }
 
-  // 3. Lesson Notes Due (Check if note for current week exists)
-  // Simplification: Just count total notes uploaded by this user
-  // We need to know the 'user' who uploaded.
+  // 3. Lesson Notes (My Uploads)
+  // We don't have a 'teacher_id' column in lesson_notes schema yet (based on saveLessonNote),
+  // but we should probably add it. For now, we'll Mock this or return 0.
+  // Actually, we can return the number of subjects they teach as a stat?
+  
+  // Let's return "My Subjects" count instead of Lesson Notes for the stat card
+  const { count: subjectCount } = await supabase
+    .from('subjects')
+    .select('*', { count: 'exact', head: true })
+    .eq('teacher', staffName);
 
   return {
     classes: classCount || 0,
     pendingScores: pendingCount || 0,
-    // Add other real stats
+    mySubjects: subjectCount || 0
   };
 };
 
-export const getStaffActivities = async (staffEmail) => { // Using email as ID often
+export const getStaffActivities = async (staffEmail, staffSubject = null) => { 
   const activities = [];
 
-  // 1. Assignment Submissions (for assignments created by this staff)
-  // We need to know which assignments belong to this staff.
-  // For now, we will fetch ALL recent assignment submissions as a proxy.
-  const { data: submissions } = await supabase
-    .from('assignment_submissions') // Assuming this table exists or similar logic
-    .select('student_name, assignment_title, created_at')
+  // 1. Assignment Submissions (Refined)
+  // Filter by subject if possible, or just recent global submissions if subject matches
+  let assignmentQuery = supabase
+    .from('assignments')
+    .select('title, subject, created_at')
     .order('created_at', { ascending: false })
     .limit(3);
+    
+  if (staffSubject) {
+      assignmentQuery = assignmentQuery.eq('subject', staffSubject);
+  }
 
-  if (submissions) {
-    submissions.forEach(s => {
+  const { data: recentAssignments } = await assignmentQuery;
+
+  if (recentAssignments) {
+    recentAssignments.forEach(a => {
       activities.push({
-        text: `${s.student_name} submitted "${s.assignment_title}"`,
-        time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: `New Assignment Created: "${a.title}"`,
+        time: new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'submission'
       });
     });
@@ -1748,6 +1778,7 @@ export const getStaffActivities = async (staffEmail) => { // Using email as ID o
 
   // 2. Lesson Note Approvals
   // Fetch notes by this staff that are Approved
+  // We still lack a 'teacher_email' column, so this is best effort
   const { data: notes } = await supabase
     .from('lesson_notes')
     .select('topic, week, status, created_at')

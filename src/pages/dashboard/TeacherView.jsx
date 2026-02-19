@@ -50,11 +50,11 @@ const TeacherView = () => {
         setNotifications(notifs.slice(0, 5));
 
         // 3. Staff Stats
-        const myStats = await getStaffStats(currentUser.name);
+        const myStats = await getStaffStats(currentUser.name, currentUser.subject);
         setStats(myStats);
 
         // 4. Recent Activities
-        const myActivities = await getStaffActivities(currentUser.email);
+        const myActivities = await getStaffActivities(currentUser.email, currentUser.subject);
         setRecentActivities(myActivities);
       }
     };
@@ -70,7 +70,7 @@ const TeacherView = () => {
       {/* HEADER GREETING */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-10 relative z-10 gap-4">
         <div className="w-full lg:w-auto text-left">
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-schoolGreen mb-2">Teacher's Desk</h1>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-schoolGreen">Teacher's Desk</h1>
           <p className="text-gray-500 text-base md:text-lg">{greeting}, <span className="font-bold text-gray-800">{user?.name || 'Staff Member'}</span>.</p>
         </div>
         <div className="w-full lg:w-auto grid grid-cols-2 lg:flex gap-3">
@@ -89,7 +89,7 @@ const TeacherView = () => {
       {/* GLASS STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 relative z-10">
         <GlassStatCard
-          icon={<GraduationCap size={24} />}
+          icon={<Users size={24} />}
           color="bg-gradient-to-br from-blue-500 to-blue-600"
           label="My Classes"
           value={stats.classes + " Classes"}
@@ -101,14 +101,14 @@ const TeacherView = () => {
           color="bg-gradient-to-br from-orange-500 to-orange-600"
           label="Pending Scores"
           value={stats.pendingScores + " Pending"}
-          sub="Input Scores"
+          sub="Input Results"
           onClick={() => navigate('/portal/scores')}
         />
         <GlassStatCard
           icon={<BookOpen size={24} />}
           color="bg-gradient-to-br from-purple-500 to-purple-600"
           label="My Subjects"
-          value="View All"
+          value={(stats.mySubjects || "View") + " Subjects"}
           sub="Subject Allocation"
           onClick={() => navigate('/portal/staff-subjects')}
         />

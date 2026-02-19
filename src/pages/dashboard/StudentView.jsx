@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Calendar, Download,
-  FileText, CheckCircle, Award
+  FileText, CheckCircle, Award, LayoutDashboard, Settings
 } from 'lucide-react';
 import { getAssignments, getStudentStats, getTodaysClasses, getNotices, getStudentAttendanceStats, getStudentFeeStatus, getDailyAdheeth } from '../../utils/db'; // <--- IMPORT DB
 import { useToast } from '../../components/ToastProvider'; // <--- NEW IMPORT
@@ -102,24 +102,24 @@ const StudentView = () => {
         {/* Navigation Buttons - Grid on Mobile */}
         <div className="w-full lg:w-auto grid grid-cols-2 lg:flex lg:flex-wrap gap-2">
           {/* Direct Navigation Buttons */}
-          <button onClick={() => navigate('/portal/dashboard')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-schoolGreen text-white shadow-md transition-all whitespace-nowrap col-span-2 md:col-span-1 lg:flex-none">
-            Dashboard
+          <button onClick={() => navigate('/portal/dashboard')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-schoolGreen text-white shadow-md transition-all whitespace-nowrap col-span-2 md:col-span-1 lg:flex-none flex items-center">
+            <LayoutDashboard size={16} className="mr-2" /> Dashboard
           </button>
           <button onClick={() => navigate('/portal/result-sheet')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
-            Check Results
+            <FileText size={16} className="mr-2" /> Check Results
           </button>
           <button onClick={() => navigate('/portal/assignments')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
-            Assignments
+            <BookOpen size={16} className="mr-2" /> Assignments
             {assignmentList.length > 0 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">{assignmentList.length}</span>}
           </button>
           <button onClick={() => navigate('/portal/lesson-notes')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none">
-            Lesson Notes
+            <Download size={16} className="mr-2" /> Lesson Notes
           </button>
           <button onClick={() => navigate('/portal/timetable')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none col-span-2 md:col-span-1">
-            Timetable
+            <Calendar size={16} className="mr-2" /> Timetable
           </button>
           <button onClick={() => navigate('/portal/student-settings')} className="justify-center px-4 py-3 md:py-2.5 rounded-lg text-sm font-bold bg-white text-gray-500 hover:bg-gray-100 transition-all flex items-center whitespace-nowrap border border-gray-100 shadow-sm lg:flex-none col-span-2 md:col-span-1">
-            Settings
+            <Settings size={16} className="mr-2" /> Settings
           </button>
         </div>
       </div>
