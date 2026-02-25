@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-route
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { ToastProvider } from './components/ToastProvider'; // <--- NEW IMPORT
+import NotificationListener from './components/NotificationListener'; // <--- Realtime Notifs
 
 // Import Pages
 import Home from './pages/Home';
@@ -62,6 +63,7 @@ const AppContent = ({ isNative }) => {
 
   return (
     <ToastProvider>
+      <NotificationListener />
       <ScrollToTop />
       <Routes>
         {/* ... routes ... */}

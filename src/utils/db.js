@@ -1162,9 +1162,9 @@ export const deleteStaff = async (id) => {
 
   // 4. Delete Notifications (Cleanup)
   if (id) {
-     await supabase.from('notifications').delete().eq('user_id', id);
+    await supabase.from('notifications').delete().eq('user_id', id);
   }
-  
+
   // 5. Delete Staff
   const { error } = await supabase.from('staff').delete().eq('id', id);
   if (error) console.error(error);
@@ -1719,23 +1719,23 @@ export const getStaffStats = async (staffName, staffSubject = null) => {
   // Filtering by Subject if available, otherwise general pending count (fallback)
   let pendingCount = 0;
   if (staffSubject) {
-      const { count } = await supabase
-        .from('results')
-        .select('*', { count: 'exact', head: true })
-        .eq('approval_status', 'Pending')
-        .eq('subject', staffSubject);
-      pendingCount = count || 0;
+    const { count } = await supabase
+      .from('results')
+      .select('*', { count: 'exact', head: true })
+      .eq('approval_status', 'Pending')
+      .eq('subject', staffSubject);
+    pendingCount = count || 0;
   } else {
-      // Fallback: If no subject assigned, maybe show 0 or all? 
-      // Showing 0 is safer to avoid confusion.
-      pendingCount = 0; 
+    // Fallback: If no subject assigned, maybe show 0 or all? 
+    // Showing 0 is safer to avoid confusion.
+    pendingCount = 0;
   }
 
   // 3. Lesson Notes (My Uploads)
   // We don't have a 'teacher_id' column in lesson_notes schema yet (based on saveLessonNote),
   // but we should probably add it. For now, we'll Mock this or return 0.
   // Actually, we can return the number of subjects they teach as a stat?
-  
+
   // Let's return "My Subjects" count instead of Lesson Notes for the stat card
   const { count: subjectCount } = await supabase
     .from('subjects')
@@ -1749,7 +1749,7 @@ export const getStaffStats = async (staffName, staffSubject = null) => {
   };
 };
 
-export const getStaffActivities = async (staffEmail, staffSubject = null) => { 
+export const getStaffActivities = async (staffEmail, staffSubject = null) => {
   const activities = [];
 
   // 1. Assignment Submissions (Refined)
@@ -1759,9 +1759,9 @@ export const getStaffActivities = async (staffEmail, staffSubject = null) => {
     .select('title, subject, created_at')
     .order('created_at', { ascending: false })
     .limit(3);
-    
+
   if (staffSubject) {
-      assignmentQuery = assignmentQuery.eq('subject', staffSubject);
+    assignmentQuery = assignmentQuery.eq('subject', staffSubject);
   }
 
   const { data: recentAssignments } = await assignmentQuery;
@@ -1813,4 +1813,136 @@ export const getDailyAdheeth = async () => {
   // Randomize
   const randomIndex = Math.floor(Math.random() * data.length);
   return data[randomIndex];
+};
+
+// ============================================================================
+// --- NEW DASHBOARD FEATURE MOCKS (To be replaced with real DB tables later) ---
+// ============================================================================
+
+// --- ADMIN FEATURES ---
+
+export const getFinancialTrends = async () => {
+  // Mock data for Recharts (Line/Bar chart)
+  return [
+    { name: 'Sep', fees: 450000, expenses: 120000 },
+    { name: 'Oct', fees: 120000, expenses: 80000 },
+    { name: 'Nov', fees: 90000, expenses: 95000 },
+    { name: 'Dec', fees: 50000, expenses: 150000 },
+    { name: 'Jan', fees: 650000, expenses: 110000 },
+    { name: 'Feb', fees: 210000, expenses: 85000 },
+  ];
+};
+
+export const getOverallAttendance = async () => {
+  // Mock data for School-wide attendance today
+  return {
+    present: 412,
+    absent: 38,
+    late: 15,
+    percentage: 88,
+  };
+};
+
+export const getStaffLeaves = async () => {
+  // Mock data for staff absence/leave tracker
+  return [
+    { id: 1, name: 'Mr. Ibrahim', department: 'Science', status: 'Absent Today', reason: 'Sick Leave' },
+    { id: 2, name: 'Mrs. Amina', department: 'Languages', status: 'Pending Request', reason: 'Maternity (Starting next week)' },
+  ];
+};
+
+export const getTermCountdown = async () => {
+  // Mock term dates
+  const termEnd = new Date('2026-04-15').getTime();
+  const now = new Date().getTime();
+  const distance = termEnd - now;
+
+  if (distance < 0) return { days: 0, percentage: 100, currentTerm: '2nd Term', isEnded: true };
+
+  const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  const totalDaysInTerm = 90; // Approx 3 months
+  const percentage = Math.min(100, Math.max(0, Math.floor(((totalDaysInTerm - days) / totalDaysInTerm) * 100)));
+
+  return {
+    days,
+    percentage,
+    currentTerm: '2nd Term',
+    isEnded: false
+  };
+};
+
+export const sendBulkMessage = async (payload) => {
+  // payload: { audiences: ['Parents', 'Staff'], message: '...', channels: ['SMS', 'Email'] }
+  // Mock API call delay
+  return new Promise(resolve => setTimeout(() => resolve({ success: true, count: 450 }), 1500));
+};
+
+// --- STAFF / TEACHER FEATURES ---
+
+export const getClassPerformanceTrends = async (className) => {
+  // Mock data for a bar chart showing class average per subject
+  return [
+    { subject: 'Math', average: 65, top: 98 },
+    { subject: 'English', average: 72, top: 92 },
+    { subject: 'Basic Sci', average: 58, top: 88 },
+    { subject: 'Islamic St', average: 85, top: 99 },
+    { subject: 'Arabic', average: 60, top: 85 },
+  ];
+};
+
+export const getUpcomingBirthdays = async (context = 'class') => {
+  // Mock data for birthdays
+  return [
+    { name: 'John Doe', date: 'Oct 15', ageTurning: 12 },
+    { name: 'Aisha Bello', date: 'Oct 18', ageTurning: 13 },
+  ];
+};
+
+export const getStaffTodos = async (staffId) => {
+  // Fallback to localStorage if no DB table exists yet for immediate functionality
+  const localTodos = JSON.parse(localStorage.getItem(`todos_${staffId}`)) || [
+    { id: 1, text: 'Grade JSS2 Math Papers', completed: false },
+    { id: 2, text: 'Submit Weekly Lesson Note', completed: true },
+    { id: 3, text: 'Call parent of Student X', completed: false },
+  ];
+  return localTodos;
+};
+
+export const saveStaffTodo = async (staffId, todos) => {
+  localStorage.setItem(`todos_${staffId}`, JSON.stringify(todos));
+  return { success: true };
+};
+
+export const sendDirectParentMessage = async (studentId, message, type) => {
+  // Mock API Call
+  return new Promise(resolve => setTimeout(() => resolve({ success: true }), 1000));
+};
+
+// --- STUDENT FEATURES ---
+
+export const getStudentPerformanceTrends = async (studentId) => {
+  // Mock line chart data showing term-over-term growth
+  return [
+    { term: 'JSS1 T1', average: 68 },
+    { term: 'JSS1 T2', average: 72 },
+    { term: 'JSS1 T3', average: 70 },
+    { term: 'JSS2 T1', average: 75 },
+    { term: 'JSS2 T2', average: 82 },
+  ];
+};
+
+export const getRecentGradesSnippet = async (studentId) => {
+  return [
+    { subject: 'Mathematics', score: 85, grade: 'A', date: '2 days ago' },
+    { subject: 'English', score: 72, grade: 'B', date: '1 week ago' },
+    { subject: 'Basic Science', score: 68, grade: 'C', date: '2 weeks ago' },
+  ];
+};
+
+export const getStudentAchievements = async (studentId) => {
+  return [
+    { id: 1, title: 'Perfect Attendance', icon: 'Star', color: 'text-yellow-500', desc: 'September' },
+    { id: 2, title: 'Top 5% Math', icon: 'TrendingUp', color: 'text-blue-500', desc: '1st Term' },
+    { id: 3, title: 'Neatest Student', icon: 'Award', color: 'text-green-500', desc: 'Week 4' },
+  ];
 };
