@@ -1875,6 +1875,24 @@ export const getStaffLeaves = async () => {
   return leaves || [];
 };
 
+export const saveStaffLeave = async (leaveData) => {
+  const { error } = await supabase.from('staff_leaves').insert([leaveData]);
+  if (error) {
+    console.error("Error saving leave request", error);
+    return false;
+  }
+  return true;
+};
+
+export const updateLeaveStatus = async (leaveId, status) => {
+  const { error } = await supabase.from('staff_leaves').update({ status }).eq('id', leaveId);
+  if (error) {
+    console.error("Error updating leave status", error);
+    return false;
+  }
+  return true;
+};
+
 export const getTermCountdown = async () => {
   const { data } = await supabase.from('admin_settings').select('value').eq('key', 'term_dates').maybeSingle();
   let termEnd;

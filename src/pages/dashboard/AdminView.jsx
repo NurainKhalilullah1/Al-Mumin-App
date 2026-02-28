@@ -7,7 +7,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import {
   getDashboardStats, checkPendingResults, getRecentActivities,
-  getFinancialTrends, getOverallAttendance, getStaffLeaves, getTermCountdown, sendBulkMessage
+  getFinancialTrends, getOverallAttendance, getStaffLeaves, getTermCountdown, sendBulkMessage,
+  getClasses, getStudents
 } from '../../utils/db';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
@@ -25,6 +26,11 @@ const AdminView = () => {
   const [staffLeaves, setStaffLeaves] = useState([]);
   const [termCountdown, setTermCountdown] = useState(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [classesList, setClassesList] = useState([]);
+  const [studentsList, setStudentsList] = useState([]);
+  const [broadcastTarget, setBroadcastTarget] = useState('All Parents');
+  const [targetClass, setTargetClass] = useState('');
+  const [targetStudent, setTargetStudent] = useState('');
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -48,6 +54,8 @@ const AdminView = () => {
     setAttendanceData(await getOverallAttendance());
     setStaffLeaves(await getStaffLeaves());
     setTermCountdown(await getTermCountdown());
+    setClassesList(await getClasses());
+    setStudentsList(await getStudents());
   };
 
   useEffect(() => {
@@ -275,12 +283,57 @@ const AdminView = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Send To</label>
-                <select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition">
-                  <option>All Parents & Guardians</option>
-                  <option>All Staff Members</option>
-                  <option>Specific Class (JSS 1)</option>
+                <select
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition"
+                  value={broadcastTarget}
+                  onChange={(e) => {
+                    setBroadcastTarget(e.target.value);
+                    setTargetClass('');
+                    setTargetStudent('');
+                  }}
+                >
+                  <option value="All Parents">All Parents & Guardians</option>
+                  <option value="All Staff">All Staff Members</option>
+                  <option value="Specific Class">Specific Class</option>
+                  <option value="Specific Student">Specific Student</option>
                 </select>
               </div>
+
+              {(broadcastTarget === 'Specific Class' || broadcastTarget === 'Specific Student') && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Class</label>
+                  <select
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition"
+                    value={targetClass}
+                    onChange={(e) => {
+                      setTargetClass(e.target.value);
+                      setTargetStudent('');
+                    }}
+                  >
+                    <option value="">-- Choose a Class --</option>
+                    {classesList.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {(broadcastTarget === 'Specific Student' && targetClass) && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Student in {targetClass}</label>
+                  <select
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition"
+                    value={targetStudent}
+                    onChange={(e) => setTargetStudent(e.target.value)}
+                  >
+                    <option value="">-- Choose a Student --</option>
+                    {studentsList.filter(s => s.classLevel === targetClass).map(s => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.admission_number || 'N/A'})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Message</label>
                 <textarea rows="4" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition resize-none" placeholder="Type your broadcast message here..."></textarea>

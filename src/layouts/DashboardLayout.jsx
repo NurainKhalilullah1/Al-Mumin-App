@@ -29,6 +29,7 @@ const DashboardLayout = () => {
       { name: 'Notices', icon: <Bell size={20} />, path: '/portal/admin-notices' },
       { name: 'Admissions', icon: <UserPlus size={20} />, path: '/portal/admissions' },
       { name: 'Staff', icon: <Users size={20} />, path: '/portal/staff' },
+      { name: 'Staff Leave', icon: <Calendar size={20} />, path: '/portal/staff-leave' },
       { name: 'Classes', icon: <CheckSquare size={20} />, path: '/portal/admin-classes' },
       { name: 'Subjects', icon: <BookOpen size={20} />, path: '/portal/admin-subjects' },
       { name: 'Results', icon: <FileText size={20} />, path: '/portal/results' },
@@ -45,6 +46,7 @@ const DashboardLayout = () => {
       { name: 'Lesson Notes', icon: <FileText size={20} />, path: '/portal/lesson-notes' },
       { name: 'Assignments', icon: <BookOpen size={20} />, path: '/portal/assignments' },
       { name: 'Admission', icon: <UserPlus size={20} />, path: '/portal/staff-admission' },
+      { name: 'Staff Leave', icon: <Calendar size={20} />, path: '/portal/staff-leave' },
     ],
     student: [
       { name: 'My Portal', icon: <LayoutDashboard size={20} />, path: '/portal/dashboard' },

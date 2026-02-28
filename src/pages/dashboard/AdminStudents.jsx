@@ -276,7 +276,7 @@ const AdminStudents = () => {
             {/* EDIT MODAL */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-8 shadow-2xl relative animate-in zoom-in-95">
+                    <div className="bg-white w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95">
                         <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 text-gray-400 hover:text-red-500"><X size={24} /></button>
                         <h2 className="text-2xl font-bold text-schoolGreen mb-6">Edit Student</h2>
 

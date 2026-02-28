@@ -194,7 +194,7 @@ const Staff = () => {
             {/* --- MODAL --- */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
+                    <div className="bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
 
                         <button
                             onClick={() => setShowModal(false)}

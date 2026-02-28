@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { ToastProvider } from './components/ToastProvider'; // <--- NEW IMPORT
 import NotificationListener from './components/NotificationListener'; // <--- Realtime Notifs
 
@@ -38,6 +39,7 @@ import AdminPayments from './pages/dashboard/AdminPayments'; // <--- NEW IMPORT
 import StudentPayments from './pages/dashboard/StudentPayments'; // <--- NEW IMPORT
 import StaffAdmission from './pages/dashboard/StaffAdmission'; // <--- NEW IMPORT
 import StudentSettings from './pages/dashboard/StudentSettings'; // <--- NEW IMPORT
+import StaffLeave from './pages/dashboard/StaffLeave'; // <--- NEW IMPORT
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -60,6 +62,14 @@ function App() {
 // Separate component to use hooks inside Router
 const AppContent = ({ isNative }) => {
   useInactivity(); // <--- Activate Hook
+
+  useEffect(() => {
+    if (isNative) {
+      // Hide the splash screen after the app is loaded
+      // (Even if launchAutoHide is true, it's good practice to hide it once React mounts)
+      SplashScreen.hide();
+    }
+  }, [isNative]);
 
   return (
     <ToastProvider>
@@ -108,6 +118,7 @@ const AppContent = ({ isNative }) => {
               <Route path="classes" element={<MyClasses />} />
               <Route path="scores" element={<ScoreSheet />} />
               <Route path="staff-admission" element={<StaffAdmission />} />
+              <Route path="staff-leave" element={<StaffLeave />} />
             </Route>
 
             {/* --- STUDENT ROUTES --- */}

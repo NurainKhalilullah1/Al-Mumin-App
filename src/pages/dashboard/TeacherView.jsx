@@ -9,7 +9,8 @@ import {
 } from 'recharts';
 import {
   getNotices, getNotifications, getStaffStats, getStaffActivities,
-  getClassPerformanceTrends, getUpcomingBirthdays, getStaffTodos, saveStaffTodo, sendDirectParentMessage
+  getClassPerformanceTrends, getUpcomingBirthdays, getStaffTodos, saveStaffTodo, sendDirectParentMessage,
+  getStudentsByClass
 } from '../../utils/db';
 
 const TeacherView = () => {
@@ -29,6 +30,8 @@ const TeacherView = () => {
   const [todos, setTodos] = useState([]);
   const [newTodoText, setNewTodoText] = useState('');
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
+  const [myStudents, setMyStudents] = useState([]);
+  const [messageData, setMessageData] = useState({ studentId: '', type: 'General Update', message: '' });
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -59,9 +62,11 @@ const TeacherView = () => {
         setRecentActivities(await getStaffActivities(currentUser.email, currentUser.subject));
 
         // 3. New Advanced Features
-        setPerformanceData(await getClassPerformanceTrends(currentUser.assigned_class || 'JSS 1'));
+        const assignedClass = currentUser.assigned_class || 'JSS 1';
+        setPerformanceData(await getClassPerformanceTrends(assignedClass));
         setBirthdays(await getUpcomingBirthdays('class'));
         setTodos(await getStaffTodos(currentUser.id || currentUser.email));
+        setMyStudents(await getStudentsByClass(assignedClass));
       }
     };
     fetchData();
@@ -284,15 +289,24 @@ const TeacherView = () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Student</label>
-                <select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition">
-                  <option>-- Choose a student in your class --</option>
-                  <option>John Doe</option>
-                  <option>Aisha Bello</option>
+                <select
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition"
+                  value={messageData.studentId}
+                  onChange={(e) => setMessageData({ ...messageData, studentId: e.target.value })}
+                >
+                  <option value="">-- Choose a student in your class --</option>
+                  {myStudents.map(student => (
+                    <option key={student.id} value={student.id}>{student.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Message Type</label>
-                <select className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition">
+                <select
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition"
+                  value={messageData.type}
+                  onChange={(e) => setMessageData({ ...messageData, type: e.target.value })}
+                >
                   <option>General Update</option>
                   <option>Behavioral Note</option>
                   <option>Academic Praise</option>
@@ -300,9 +314,24 @@ const TeacherView = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Message</label>
-                <textarea rows="3" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition resize-none"></textarea>
+                <textarea
+                  rows="3"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-schoolGreen/20 focus:border-schoolGreen outline-none transition resize-none"
+                  value={messageData.message}
+                  onChange={(e) => setMessageData({ ...messageData, message: e.target.value })}
+                ></textarea>
               </div>
-              <button onClick={() => setIsMessagingOpen(false)} className="w-full bg-schoolGreen text-white font-bold text-sm py-3.5 rounded-xl shadow-md hover:bg-schoolGold transition mt-2">
+              <button
+                onClick={() => {
+                  if (messageData.studentId && messageData.message) {
+                    setIsMessagingOpen(false);
+                    setMessageData({ studentId: '', type: 'General Update', message: '' });
+                  } else {
+                    alert('Please select a student and type a message');
+                  }
+                }}
+                className="w-full bg-schoolGreen text-white font-bold text-sm py-3.5 rounded-xl shadow-md hover:bg-schoolGold transition mt-2"
+              >
                 Send to Parent
               </button>
             </div>
