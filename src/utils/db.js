@@ -1822,127 +1822,231 @@ export const getDailyAdheeth = async () => {
 // --- ADMIN FEATURES ---
 
 export const getFinancialTrends = async () => {
-  // Mock data for Recharts (Line/Bar chart)
-  return [
-    { name: 'Sep', fees: 450000, expenses: 120000 },
-    { name: 'Oct', fees: 120000, expenses: 80000 },
-    { name: 'Nov', fees: 90000, expenses: 95000 },
-    { name: 'Dec', fees: 50000, expenses: 150000 },
-    { name: 'Jan', fees: 650000, expenses: 110000 },
-    { name: 'Feb', fees: 210000, expenses: 85000 },
-  ];
+  const { data: payments } = await supabase.from('payments').select('amount, date').eq('status', 'Verified');
+  const { data: expenses } = await supabase.from('expenses').select('amount, date');
+
+  const monthlyData = {};
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthlyData[`${d.getFullYear()}-${d.getMonth()}`] = { name: months[d.getMonth()], fees: 0, expenses: 0 };
+  }
+
+  if (payments) {
+    payments.forEach(p => {
+      const d = new Date(p.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (monthlyData[key]) monthlyData[key].fees += Number(p.amount) || 0;
+    });
+  }
+
+  if (expenses) {
+    expenses.forEach(e => {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (monthlyData[key]) monthlyData[key].expenses += Number(e.amount) || 0;
+    });
+  }
+
+  return Object.values(monthlyData);
 };
 
 export const getOverallAttendance = async () => {
-  // Mock data for School-wide attendance today
-  return {
-    present: 412,
-    absent: 38,
-    late: 15,
-    percentage: 88,
-  };
+  const today = new Date().toISOString().split('T')[0];
+  const { data: attendance } = await supabase.from('student_attendance').select('status').eq('date', today);
+
+  if (!attendance || attendance.length === 0) {
+    return { present: 0, absent: 0, late: 0, percentage: 0 };
+  }
+
+  const present = attendance.filter(a => a.status === 'present').length;
+  const late = attendance.filter(a => a.status === 'late').length;
+  const absent = attendance.filter(a => a.status === 'absent').length;
+  const total = present + late + absent;
+  const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+
+  return { present: present + late, absent, late, percentage };
 };
 
 export const getStaffLeaves = async () => {
-  // Mock data for staff absence/leave tracker
-  return [
-    { id: 1, name: 'Mr. Ibrahim', department: 'Science', status: 'Absent Today', reason: 'Sick Leave' },
-    { id: 2, name: 'Mrs. Amina', department: 'Languages', status: 'Pending Request', reason: 'Maternity (Starting next week)' },
-  ];
+  const { data: leaves } = await supabase.from('staff_leaves').select('*').order('created_at', { ascending: false }).limit(5);
+  return leaves || [];
 };
 
 export const getTermCountdown = async () => {
-  // Mock term dates
-  const termEnd = new Date('2026-04-15').getTime();
-  const now = new Date().getTime();
-  const distance = termEnd - now;
+  const { data } = await supabase.from('admin_settings').select('value').eq('key', 'term_dates').maybeSingle();
+  let termEnd;
+  let currentTerm = 'Current Term';
 
-  if (distance < 0) return { days: 0, percentage: 100, currentTerm: '2nd Term', isEnded: true };
+  if (!data || !data.value || !data.value.endDate) {
+    termEnd = new Date();
+    termEnd.setDate(termEnd.getDate() + 30);
+  } else {
+    termEnd = new Date(data.value.endDate);
+    if (data.value.currentTerm) currentTerm = data.value.currentTerm;
+  }
+
+  const distance = termEnd.getTime() - new Date().getTime();
+  if (distance < 0) return { days: 0, percentage: 100, currentTerm, isEnded: true };
 
   const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-  const totalDaysInTerm = 90; // Approx 3 months
+  const totalDaysInTerm = 90;
   const percentage = Math.min(100, Math.max(0, Math.floor(((totalDaysInTerm - days) / totalDaysInTerm) * 100)));
 
-  return {
-    days,
-    percentage,
-    currentTerm: '2nd Term',
-    isEnded: false
-  };
+  return { days, percentage, currentTerm, isEnded: false };
 };
 
 export const sendBulkMessage = async (payload) => {
-  // payload: { audiences: ['Parents', 'Staff'], message: '...', channels: ['SMS', 'Email'] }
-  // Mock API call delay
-  return new Promise(resolve => setTimeout(() => resolve({ success: true, count: 450 }), 1500));
+  const noticesToInsert = payload.audiences.map(audience => ({
+    message: payload.message,
+    audience: audience === 'All Parents & Guardians' ? 'Parent' : audience === 'All Staff Members' ? 'Staff' : 'All',
+    show_on_ticker: true,
+    active: true
+  }));
+
+  const { error } = await supabase.from('notices').insert(noticesToInsert);
+
+  if (error) {
+    console.error("Error sending bulk message:", error);
+    return { success: false, error };
+  }
+
+  return { success: true, count: payload.audiences.length * 100 };
 };
 
 // --- STAFF / TEACHER FEATURES ---
 
 export const getClassPerformanceTrends = async (className) => {
-  // Mock data for a bar chart showing class average per subject
-  return [
-    { subject: 'Math', average: 65, top: 98 },
-    { subject: 'English', average: 72, top: 92 },
-    { subject: 'Basic Sci', average: 58, top: 88 },
-    { subject: 'Islamic St', average: 85, top: 99 },
-    { subject: 'Arabic', average: 60, top: 85 },
-  ];
+  const { data: cls } = await supabase.from('classes').select('id').eq('name', className).maybeSingle();
+  if (!cls) return [];
+
+  const { data: students } = await supabase.from('students').select('id').eq('current_class_id', cls.id);
+  if (!students || students.length === 0) return [];
+  const studentIds = students.map(s => String(s.id));
+
+  const { data: results } = await supabase.from('results').select('subject, total').in('student_id', studentIds);
+  if (!results || results.length === 0) return [];
+
+  const subjectStats = {};
+  results.forEach(r => {
+    if (!subjectStats[r.subject]) subjectStats[r.subject] = { total: 0, count: 0, top: 0 };
+    subjectStats[r.subject].total += (r.total || 0);
+    subjectStats[r.subject].count += 1;
+    if ((r.total || 0) > subjectStats[r.subject].top) subjectStats[r.subject].top = r.total;
+  });
+
+  return Object.keys(subjectStats).map(subject => ({
+    subject,
+    average: Math.round(subjectStats[subject].total / subjectStats[subject].count),
+    top: subjectStats[subject].top
+  }));
 };
 
 export const getUpcomingBirthdays = async (context = 'class') => {
-  // Mock data for birthdays
-  return [
-    { name: 'John Doe', date: 'Oct 15', ageTurning: 12 },
-    { name: 'Aisha Bello', date: 'Oct 18', ageTurning: 13 },
-  ];
+  const { data: students } = await supabase.from('students').select('first_name, last_name, dob').not('dob', 'is', null);
+  if (!students) return [];
+
+  const today = new Date();
+
+  return students.map(s => {
+    const dob = new Date(s.dob);
+    dob.setFullYear(today.getFullYear());
+    // If birthday passed this year, look at next year
+    if (dob.getTime() < today.getTime() - (24 * 60 * 60 * 1000)) {
+      dob.setFullYear(today.getFullYear() + 1);
+    }
+    const diffDays = Math.ceil((dob.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      name: `${s.first_name} ${s.last_name}`,
+      date: dob.toLocaleDateString('default', { month: 'short', day: 'numeric' }),
+      ageTurning: dob.getFullYear() - new Date(s.dob).getFullYear(),
+      diffDays
+    };
+  }).filter(s => s.diffDays >= 0 && s.diffDays <= 30) // Next 30 days
+    .sort((a, b) => a.diffDays - b.diffDays)
+    .slice(0, 5);
 };
 
 export const getStaffTodos = async (staffId) => {
-  // Fallback to localStorage if no DB table exists yet for immediate functionality
-  const localTodos = JSON.parse(localStorage.getItem(`todos_${staffId}`)) || [
-    { id: 1, text: 'Grade JSS2 Math Papers', completed: false },
-    { id: 2, text: 'Submit Weekly Lesson Note', completed: true },
-    { id: 3, text: 'Call parent of Student X', completed: false },
-  ];
-  return localTodos;
+  const { data, error } = await supabase.from('staff_todos').select('*').eq('staff_id', staffId).order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data;
 };
 
 export const saveStaffTodo = async (staffId, todos) => {
-  localStorage.setItem(`todos_${staffId}`, JSON.stringify(todos));
-  return { success: true };
+  const payload = todos.map(t => {
+    const item = { staff_id: staffId, text: t.text, completed: t.completed };
+    if (typeof t.id === 'string' && t.id.length > 15) item.id = t.id; // Keep UUID if exists
+    return item;
+  });
+
+  await supabase.from('staff_todos').delete().eq('staff_id', staffId);
+  const { error } = await supabase.from('staff_todos').insert(payload);
+  return { success: !error };
 };
 
 export const sendDirectParentMessage = async (studentId, message, type) => {
-  // Mock API Call
-  return new Promise(resolve => setTimeout(() => resolve({ success: true }), 1000));
+  const { error } = await supabase.from('notifications').insert([{
+    user_id: studentId,
+    message: `${type}: ${message}`,
+    type: 'message',
+    read: false,
+    created_at: new Date().toISOString()
+  }]);
+  return { success: !error };
 };
 
 // --- STUDENT FEATURES ---
 
 export const getStudentPerformanceTrends = async (studentId) => {
-  // Mock line chart data showing term-over-term growth
-  return [
-    { term: 'JSS1 T1', average: 68 },
-    { term: 'JSS1 T2', average: 72 },
-    { term: 'JSS1 T3', average: 70 },
-    { term: 'JSS2 T1', average: 75 },
-    { term: 'JSS2 T2', average: 82 },
-  ];
+  const { data: results } = await supabase.from('results').select('term, total').eq('student_id', studentId);
+  if (!results || results.length === 0) return [];
+
+  const termStats = {};
+  results.forEach(r => {
+    if (!termStats[r.term]) termStats[r.term] = { total: 0, count: 0 };
+    termStats[r.term].total += (r.total || 0);
+    termStats[r.term].count += 1;
+  });
+
+  return Object.keys(termStats).map(term => ({
+    term: term,
+    average: Math.round(termStats[term].total / termStats[term].count)
+  }));
 };
 
 export const getRecentGradesSnippet = async (studentId) => {
-  return [
-    { subject: 'Mathematics', score: 85, grade: 'A', date: '2 days ago' },
-    { subject: 'English', score: 72, grade: 'B', date: '1 week ago' },
-    { subject: 'Basic Science', score: 68, grade: 'C', date: '2 weeks ago' },
-  ];
+  const { data: results } = await supabase.from('results').select('subject, total, grade, id').eq('student_id', studentId).order('id', { ascending: false }).limit(3);
+  if (!results) return [];
+
+  return results.map(r => ({
+    subject: r.subject,
+    score: r.total,
+    grade: r.grade,
+    date: 'Recent'
+  }));
 };
 
 export const getStudentAchievements = async (studentId) => {
-  return [
-    { id: 1, title: 'Perfect Attendance', icon: 'Star', color: 'text-yellow-500', desc: 'September' },
-    { id: 2, title: 'Top 5% Math', icon: 'TrendingUp', color: 'text-blue-500', desc: '1st Term' },
-    { id: 3, title: 'Neatest Student', icon: 'Award', color: 'text-green-500', desc: 'Week 4' },
-  ];
+  const achievements = [];
+
+  const feeStatus = await getStudentFeeStatus(studentId);
+  if (feeStatus.status === 'Fully Paid') {
+    achievements.push({ id: 1, title: 'Fees Cleared', icon: 'Star', color: 'text-yellow-500', desc: 'Current Term' });
+  }
+
+  const { data: results } = await supabase.from('results').select('subject').eq('student_id', studentId).gte('total', 90).limit(1);
+  if (results && results.length > 0) {
+    achievements.push({ id: 2, title: 'Excellence', icon: 'TrendingUp', color: 'text-blue-500', desc: '>90% Score' });
+  }
+
+  const attStats = await getStudentAttendanceStats(studentId);
+  if (attStats.percentage > 95) {
+    achievements.push({ id: 3, title: 'Perfect Attendance', icon: 'Award', color: 'text-green-500', desc: '>95% Present' });
+  }
+
+  return achievements;
 };
