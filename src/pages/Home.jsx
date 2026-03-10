@@ -12,7 +12,7 @@ const Home = () => {
 
   return (
     <div className="overflow-x-hidden bg-cream font-sans">
-      
+
       {/* 1. NEWS TICKER (Fixed at top) */}
       <NewsTicker />
 
@@ -23,23 +23,23 @@ const Home = () => {
       <div className="relative h-screen w-full overflow-hidden">
         {/* Animated Background Image */}
         <div className="absolute inset-0 bg-schoolGreen">
-           <img 
-            src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" 
-            className="w-full h-full object-cover opacity-40 animate-slow-zoom" 
+          <img
+            src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80"
+            className="w-full h-full object-cover opacity-40 animate-slow-zoom"
             alt="Students"
           />
           {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-schoolGreen via-transparent to-black/30"></div>
         </div>
-        
+
         {/* Content - ADDED pt-32 TO PUSH TEXT DOWN */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center text-center px-4 pt-32 pb-20">
           <div className="max-w-5xl" data-aos="fade-up">
             <span className="inline-block py-1.5 px-5 border border-white/20 rounded-full text-xs font-bold uppercase tracking-[0.2em] text-schoolGold mb-8 bg-black/40 backdrop-blur-md shadow-lg">
               Est. 2015 • Lagos, Nigeria
             </span>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-white leading-tight mb-8 drop-shadow-2xl">
-              Cultivating <br/> <span className="italic text-schoolGold">Noble Minds</span>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-white leading-tight mb-8 drop-shadow-2xl">
+              Cultivating <br /> <span className="italic text-schoolGold">Noble Minds</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-100 mb-10 max-w-2xl mx-auto font-light leading-relaxed drop-shadow-md">
               An institution where academic brilliance meets spiritual depth. We don't just teach; we transform.
@@ -70,7 +70,7 @@ const Home = () => {
           <div data-aos="fade-right">
             <h4 className="text-schoolGold font-bold uppercase tracking-widest text-xs mb-4">Welcome to Al-Mumin</h4>
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-schoolGreen mb-6 leading-tight">
-              A Legacy of <br/> Excellence & Faith.
+              A Legacy of <br /> Excellence & Faith.
             </h2>
             <div className="h-1 w-20 bg-schoolGold mb-8"></div>
             <p className="text-gray-600 text-lg leading-relaxed mb-6 text-justify">
@@ -83,10 +83,10 @@ const Home = () => {
               Read Our Story &rarr;
             </Link>
           </div>
-          
+
           <div className="relative" data-aos="fade-left">
             <div className="absolute top-10 right-10 w-full h-full border-2 border-schoolGold/30 rounded-full z-0"></div>
-            <img 
+            <img
               src="images/acad-3.jpg" className="relative z-10 w-full rounded-tr-[100px] rounded-bl-[100px] shadow-2xl"
             />
           </div>
@@ -108,11 +108,11 @@ const Home = () => {
                 <Globe size={150} />
               </div>
               <div className="relative z-10">
-                  <Globe size={40} className="text-schoolGold mb-6" />
-                  <h3 className="text-2xl font-serif font-bold mb-4">Global Curriculum</h3>
-                  <p className="text-gray-300 leading-relaxed">
-                    We prepare students for WAEC, JAMB, NECO and GCE ensuring they can gain admission into top universities in Nigeria.
-                  </p>
+                <Globe size={40} className="text-schoolGold mb-6" />
+                <h3 className="text-2xl font-serif font-bold mb-4">Global Curriculum</h3>
+                <p className="text-gray-300 leading-relaxed">
+                  We prepare students for WAEC, JAMB, NECO and GCE ensuring they can gain admission into top universities in Nigeria.
+                </p>
               </div>
               <button className="relative z-10 mt-8 text-sm font-bold uppercase tracking-widest text-schoolGold flex items-center group-hover:translate-x-2 transition-transform">
                 Learn More <ArrowRight size={16} className="ml-2" />
@@ -163,11 +163,11 @@ const Home = () => {
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-6">
               <div className="p-2 bg-white rounded-full" size={20}>
-              <img 
-              src="/logo.png" 
-              alt="Al-Mumin Logo" 
-              className="w-10 h-10 object-contain" 
-            />
+                <img
+                  src="/logo.png"
+                  alt="Al-Mumin Logo"
+                  className="w-10 h-10 object-contain"
+                />
               </div>
               <span className="font-serif font-bold text-2xl">Al-Mumin (AM) <br />Schools</span>
             </div>
